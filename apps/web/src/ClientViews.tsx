@@ -1,0 +1,11 @@
+"use client";
+import dynamic from "next/dynamic";
+export const HomePage = dynamic(() => import("@/views/HomePage").then((m) => m.HomePage), { ssr: false, loading: () => <p role="status" className="p-8">Loading xersxes...</p> });
+export const MapPage = dynamic(() => import("@/views/MapPage").then((m) => m.MapPage), { ssr: false, loading: () => <p role="status" className="p-8">Loading xersxes...</p> });
+export const ReportPage = dynamic(() => import("@/views/ReportPage").then((m) => m.ReportPage), { ssr: false, loading: () => <p role="status" className="p-8">Loading xersxes...</p> });
+export const EvidenceFeedPage = dynamic(() => import("@/views/EvidenceFeedPage").then((m) => m.EvidenceFeedPage), { ssr: false, loading: () => <p role="status" className="p-8">Loading xersxes...</p> });
+export const AboutSafetyPage = dynamic(() => import("@/views/AboutSafetyPage").then((m) => m.AboutSafetyPage), { ssr: false, loading: () => <p role="status" className="p-8">Loading xersxes...</p> });
+export const ModeratorLoginPage = dynamic(() => import("@/views/ModeratorLoginPage").then((m) => m.ModeratorLoginPage), { ssr: false, loading: () => <p role="status" className="p-8">Loading xersxes...</p> });
+export const ModeratorDashboardPage = dynamic(() => import("@/views/ModeratorDashboardPage").then((m) => m.ModeratorDashboardPage), { ssr: false, loading: () => <p role="status" className="p-8">Loading xersxes...</p> });
+export const ReportDetailsPage = dynamic(() => import("@/views/ReportDetailsPage").then((m) => m.ReportDetailsPage), { ssr: false, loading: () => <p role="status" className="p-8">Loading xersxes...</p> });
+export const NotFoundPage = dynamic(() => import("@/views/NotFoundPage").then((m) => m.NotFoundPage), { ssr: false, loading: () => <p role="status" className="p-8">Loading xersxes...</p> });

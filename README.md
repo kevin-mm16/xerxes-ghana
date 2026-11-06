@@ -1,125 +1,50 @@
-# Ghana Galamsey Watch
+# xersxes
 
-Security-first frontend for safe civic reporting, private verification, and public monitoring of suspected galamsey activity in Ghana.
+A modular environmental intelligence platform and R&D project within the wider XERSXES technology mission.
 
-## Current frontend scope
+> **Status:** Early development. This repository is not ready to receive confidential whistleblower evidence or operate physical drones.
 
-This is the frontend-first implementation of the project. It uses sample data until backend, storage, authentication, and satellite services are connected. It includes:
+## MVP scope
 
-- Anonymous citizen reporting flow
-- Simulated media/evidence submission states
-- Approximate Ghana hotspot map visualization
-- Safe public report details
-- Sanitized evidence feed
-- Separate moderator login and dashboard frontend
-- Public/private separation for sensitive data
+- Interactive geospatial monitoring dashboard
+- Human-reviewed environmental incident workflow
+- Reproducible satellite change-analysis pipelines
+- Initial research model evaluated on held-out geography
 
-No real reports should be submitted until the backend, upload pipeline, storage, authentication, and security review are complete.
+Drone integration and XNP peer networking are separate research workstreams. No blockchain is planned.
 
-## Tech stack
+## Stack
 
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-- Mock data in `src/data`
-- Reusable components in `src/components`
+- **Web:** Next.js, TypeScript, React
+- **API:** FastAPI, Python 3.12
+- **Spatial database:** PostgreSQL 16 + PostGIS
+- **Processing:** Independent Python geospatial and AI workers (future)
+- **Local environment:** Docker Compose
 
-## Run locally
+## Getting started
 
-```bash
-npm install
-npm run dev
-```
+1. Install Docker Engine/Compose or Docker Desktop.
+2. Copy `.env.example` to `.env` at the repository root.
+3. Replace the development-only value of `POSTGRES_PASSWORD` with a unique local password.
+4. Run `docker compose up --build`.
+5. Visit [localhost:3000](http://localhost:3000) for the web shell and [localhost:8000/health](http://localhost:8000/health) for the API health endpoint.
 
-Build check:
+The local stack is for **development only**. It does not implement production security, high availability, or anonymous source protection.
 
-```bash
-npm run build
-```
+## Team workflow
 
-## Available pages
+- `main`: reviewed release-ready history
+- `develop`: integration
+- `feature/*`: one feature per branch, proposed into `develop` via pull request
 
-- `/` - Landing page
-- `/map` - Approximate hotspot map with filters
-- `/report` - Mock citizen report form
-- `/reports/rpt-002` - Example report details page
-- `/evidence` - Sanitized evidence feed
-- `/about` - About and safety page
-- `/moderator/login` - Mock moderator login
-- `/moderator/dashboard` - Mock moderator dashboard
+Read [architecture](docs/architecture.md), [roadmap](docs/roadmap.md), [security boundaries](docs/security.md), and [contributing](CONTRIBUTING.md) before adding features.
 
-## What currently uses sample data or local state
+## Integrated Galamsey Watch interface
 
-- Reports, hotspots, media items, dashboard stats, verification events, and review queues
-- Upload state changes
-- Report submission success
-- Moderator login and dashboard actions
-- Satellite comparison and NDVI/NDWI display
-- Duplicate detection, assignment, and escalation workflows
+The Galamsey Watch interface lives in `apps/web/src`. Next.js App Router owns navigation; browser-only views isolate Leaflet from server rendering. The API, services, research, and infrastructure structure is preserved.
 
-## Not implemented yet
+Routes: `/`, `/map`, `/report`, `/evidence`, `/about`, `/reports/rpt-002`, `/moderator/login`, `/moderator/dashboard`.
 
-- Real authentication or user accounts
-- Real file upload, storage, or media sanitization
-- Real backend API
-- Real database
-- Real moderation permissions
-- Real satellite processing
-- Real machine learning
-- Real notifications or authority handoff
-- Public deployment
+Reports, uploads, moderation, and satellite displays remain demonstrations with sample data. The UI is not connected to the API or database. Moderator routes have no authentication and must not contain real private data.
 
-## Security-first design notes
-
-- Public navigation excludes admin links.
-- Moderator access is separated under `/moderator/login` and `/moderator/dashboard`.
-- Public pages do not display `exactCoordinatesPrivate`.
-- Public map pins use approximate locations only.
-- Raw media is represented as private moderator-only data.
-- Unverified reports use neutral labels such as pending review and under review.
-- Report submission prominently warns users not to put themselves in danger.
-- The UI avoids naming accused individuals or specific private actors.
-
-Real deployment requires a full security review, threat model, secure hosting, secrets management, upload validation, audit logging, and incident response planning.
-
-## Future backend plan
-
-Planned backend stack:
-
-- Python FastAPI
-- PostgreSQL with PostGIS
-- SQLAlchemy or SQLModel
-- Alembic migrations
-- Pydantic validation
-- Role-based access control and audit logging
-
-## Future media processing plan
-
-- Store raw media privately in S3-compatible object storage
-- Generate sanitized public copies only
-- Use FFmpeg for video compression, thumbnails, and format conversion
-- Use OpenCV for image processing, face and plate blurring, and future computer vision tasks
-- Run processing in background workers with Redis plus RQ or Celery
-
-## Future satellite processing plan
-
-- Google Earth Engine integration
-- Sentinel-2 and Landsat imagery
-- NDVI, NDWI, bare-soil, and land-disturbance comparisons
-- Human-in-the-loop verification before public display
-
-## Future ML plan
-
-- PyTorch and OpenCV for assisted detection
-- Human review as the final decision layer
-- No automated public accusation or confirmation without verification
-
-## Next development steps
-
-1. Add real routing with protected moderator sections when authentication exists.
-2. Define the FastAPI contract for report submission and moderator review.
-3. Build secure upload handling with private raw media and sanitized public derivatives.
-4. Add PostGIS-backed approximate public location generation.
-5. Add audit logs, RBAC, MFA or passkeys, and security monitoring.
-6. Prototype Google Earth Engine change detection with human review.
+Run with `cd apps/web`, `npm ci`, and `npm run dev`. Validate with `npm run typecheck` and `npm run build`. The [original frontend scope](docs/galamsey-watch.md) is retained for reference; its Vite setup instructions are historical.

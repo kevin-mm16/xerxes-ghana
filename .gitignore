@@ -1,6 +1,55 @@
+# Secrets and private state
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# JavaScript/Next.js
 node_modules/
+.next/
+out/
 dist/
-.vite/
+coverage/
 *.tsbuildinfo
-npm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+build/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Datasets, model weights, and generated artifacts
+data/
+datasets/
+artifacts/
+checkpoints/
+models/*.pt
+models/*.pth
+*.tif
+*.tiff
+*.gpkg
+
+# Local frontend development logs
 vite-dev*.log
+npm-debug.log*
+
+.vite/
+
+# Versioned synthetic UI fixtures
+!apps/web/src/data/
+!apps/web/src/data/**
