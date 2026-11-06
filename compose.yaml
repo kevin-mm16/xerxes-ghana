@@ -1,0 +1,42 @@
+name: xerxes-ghana-dev
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: xerxes
+      POSTGRES_USER: xerxes
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Create .env from .env.example}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xerxes -d xerxes"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build: ./apps/api
+    environment:
+      DATABASE_URL: postgresql+psycopg://xerxes:${POSTGRES_PASSWORD}@db:5432/xerxes
+      APP_ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  web:
+    build: ./apps/web
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  pg_data:

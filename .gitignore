@@ -1,0 +1,45 @@
+# Secrets and private state
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# JavaScript/Next.js
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+build/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Datasets, model weights, and generated artifacts
+data/
+datasets/
+artifacts/
+checkpoints/
+models/*.pt
+models/*.pth
+*.tif
+*.tiff
+*.gpkg
