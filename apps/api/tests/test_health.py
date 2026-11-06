@@ -1,6 +1,7 @@
 """Smoke tests for the first API scaffold."""
 
 from fastapi.testclient import TestClient
+
 from xerxes_api.main import app
 
 
