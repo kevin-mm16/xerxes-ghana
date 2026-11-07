@@ -29,15 +29,14 @@ export function MapExplorer({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string>();
-  const [selectedYear, setSelectedYear] = useState(() =>
-    new Date().getFullYear(),
-  );
+  const [selectedYear, setSelectedYear] = useState<number>();
   const compact = variant === "preview";
   const features = useMemo(
     () =>
       data.features.filter((feature) => {
         if (!layers[feature.properties.layer]) return false;
         if (
+          selectedYear !== undefined &&
           feature.observedAt &&
           Number(feature.observedAt.slice(0, 4)) !== selectedYear
         )
@@ -82,9 +81,16 @@ export function MapExplorer({
   }, [data.features]);
   const selected = features.find((feature) => feature.id === selectedId);
   const years = Array.from(
-    { length: Math.max(1, new Date().getFullYear() - 2016) },
-    (_, index) => index + 2017,
-  );
+    new Set(
+      data.features
+        .filter(
+          (feature) =>
+            feature.properties.layer === "observations" && feature.observedAt,
+        )
+        .map((feature) => Number(feature.observedAt!.slice(0, 4))),
+    ),
+  ).sort((a, b) => a - b);
+  const timelineVisible = !compact && layers.observations && years.length > 0;
   return (
     <div
       className={
@@ -94,7 +100,7 @@ export function MapExplorer({
       }
     >
       <HotspotMap
-        imageryYear={selectedYear}
+        timelineVisible={timelineVisible}
         features={features}
         selectedFeatureId={selectedId}
         onSelectFeature={(feature) => setSelectedId(feature.id)}
@@ -170,7 +176,7 @@ export function MapExplorer({
           />
         </div>
       )}
-      {!compact && (
+      {timelineVisible && (
         <div className="absolute bottom-3 left-3 right-3 z-[600] lg:right-[408px]">
           <TimelineControl
             years={years}

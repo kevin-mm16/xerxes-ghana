@@ -4,7 +4,7 @@ Map-first environmental intelligence for Ghana. The default workspace is unlabel
 
 ## What works
 
-- Real Digital Earth Africa Sentinel-2 composites, with an unlabelled satellite fallback.
+- Detailed unlabelled satellite/aerial imagery, with a validated Sentinel-2 composite fallback.
 - PostGIS monitoring polygons, versioned by Alembic and served through FastAPI.
 - Browser geolocation with accuracy/time/source and authoritative spatial coverage checks.
 - Persisted private observation metadata and capture locations.

@@ -1,65 +1,87 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TileLayer, WMSTileLayer } from "react-leaflet";
 import type { WMSParams } from "leaflet";
-import { satelliteForYear } from "@/services/imagery";
+import {
+  detailImagery,
+  satelliteForYear,
+  type ImageryStatus,
+} from "@/services/imagery";
 
+type Provider = ImageryStatus["provider"];
 export function EarthBaseLayer({
-  year,
-  onSourceChange,
+  onStateChange,
 }: {
-  year: number;
-  onSourceChange: (label: string) => void;
+  onStateChange: (state: ImageryStatus) => void;
 }) {
-  const [provider, setProvider] = useState<"deafrica" | "esri" | "unavailable">(
-    "deafrica",
-  );
-  const loaded = useRef(false);
-  const failures = useRef(0);
-  const product = satelliteForYear(year);
-  useEffect(() => {
-    loaded.current = false;
-    failures.current = 0;
-    onSourceChange(
-      provider === "deafrica"
-        ? `Sentinel-2 composite | ${product.date} | Digital Earth Africa`
-        : provider === "esri"
-          ? "Satellite fallback | Esri (not linked to selected year)"
-          : "Satellite imagery unavailable; monitoring overlays remain usable.",
+  const [provider, setProvider] = useState<Provider>("esri");
+  const batch = useRef({ loaded: 0, failed: 0 });
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const product = satelliteForYear(new Date().getFullYear());
+  const label =
+    provider === "esri"
+      ? "Satellite imagery | Esri / Vantor | acquisition dates vary"
+      : provider === "deafrica"
+        ? `Sentinel-2 fallback | ${product.date} | lower detail`
+        : "Satellite imagery unavailable. Monitoring overlays remain usable.";
+  const clearWatchdog = useCallback(() => {
+    clearTimeout(timer.current);
+  }, []);
+  const advance = useCallback(() => {
+    setProvider((current) =>
+      current !== provider
+        ? current
+        : current === "esri"
+          ? "deafrica"
+          : "unavailable",
     );
-    if (provider === "unavailable") return;
-    const timeout = setTimeout(() => {
-      if (!loaded.current)
-        setProvider(provider === "deafrica" ? "esri" : "unavailable");
+  }, [provider]);
+  const startBatch = useCallback(() => {
+    batch.current = { loaded: 0, failed: 0 };
+    clearWatchdog();
+    timer.current = setTimeout(() => {
+      if (batch.current.loaded === 0) advance();
     }, 15000);
-    return () => clearTimeout(timeout);
-  }, [provider, product.date, onSourceChange]);
+  }, [advance, clearWatchdog]);
+  useEffect(() => {
+    onStateChange({
+      provider,
+      state: provider === "unavailable" ? "unavailable" : "loading",
+      label,
+    });
+    if (provider !== "unavailable") startBatch();
+    return clearWatchdog;
+  }, [provider, label, onStateChange, startBatch, clearWatchdog]);
   const handlers = useMemo(
     () => ({
+      loading: startBatch,
       tileload: () => {
-        loaded.current = true;
+        batch.current.loaded++;
+        onStateChange({ provider, state: "ready", label });
       },
       tileerror: () => {
-        if (++failures.current >= 2)
-          setProvider((current) =>
-            current === provider
-              ? provider === "deafrica"
-                ? "esri"
-                : "unavailable"
-              : current,
-          );
+        batch.current.failed++;
+      },
+      load: () => {
+        clearWatchdog();
+        // Wait for a complete failed batch. A couple of missing tiles must not
+        // discard successful high-resolution images that are already on screen.
+        if (batch.current.loaded === 0 && batch.current.failed > 0) advance();
       },
     }),
-    [provider],
+    [provider, label, startBatch, clearWatchdog, advance, onStateChange],
   );
   if (provider === "unavailable") return null;
   if (provider === "esri")
     return (
       <TileLayer
         key="esri"
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-        attribution='Source: <a href="https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9">Esri, Vantor, Earthstar Geographics, GIS User Community</a>'
+        url={detailImagery.url}
+        attribution={detailImagery.attribution}
+        maxNativeZoom={detailImagery.maxNativeZoom}
+        updateWhenIdle
+        keepBuffer={2}
         eventHandlers={handlers}
       />
     );
@@ -76,6 +98,9 @@ export function EarthBaseLayer({
       key={product.date}
       url={product.endpoint}
       params={params}
+      maxNativeZoom={14}
+      updateWhenIdle
+      keepBuffer={2}
       attribution='Digital Earth Africa | Copernicus Sentinel-2 | <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>'
       eventHandlers={handlers}
     />

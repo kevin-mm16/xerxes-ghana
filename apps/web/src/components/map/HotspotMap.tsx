@@ -1,13 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { CircleMarker, MapContainer, Polygon, Tooltip } from "react-leaflet";
-import type { LatLngExpression, LatLngBoundsExpression } from "leaflet";
+import {
+  CircleMarker,
+  MapContainer,
+  Polygon,
+  ScaleControl,
+  Tooltip,
+  ZoomControl,
+} from "react-leaflet";
+import type { LatLngExpression } from "leaflet";
 import type { IntelligenceFeature } from "@/types/intelligence";
 import { EarthBaseLayer } from "./EarthBaseLayer";
+import { MapNavigation } from "./MapNavigation";
+import { ghanaViewBounds, initialMapView } from "@/utils/map-view";
+import type { ImageryStatus } from "@/services/imagery";
 
 interface Props {
-  imageryYear: number;
+  timelineVisible?: boolean;
   features: IntelligenceFeature[];
   selectedFeatureId?: string;
   onSelectFeature: (feature: IntelligenceFeature) => void;
@@ -24,18 +34,15 @@ function positions(
     return feature.geometry.coordinates.map((polygon) => polygon.map(ring));
   return [];
 }
-const bounds: LatLngBoundsExpression = [
-  [4.1, -3.6],
-  [11.5, 1.6],
-];
 export function HotspotMap({
-  imageryYear,
+  timelineVisible = false,
   features,
   selectedFeatureId,
   onSelectFeature,
   compact = false,
 }: Props) {
-  const [sourceLabel, setSourceLabel] = useState("");
+  const [imagery, setImagery] = useState<ImageryStatus>();
+  const [attempt, setAttempt] = useState(0);
   return (
     <div
       className={
@@ -45,21 +52,21 @@ export function HotspotMap({
       }
     >
       <MapContainer
-        center={[7.9465, -1.0232]}
-        zoom={7}
+        center={initialMapView.center}
+        zoom={initialMapView.zoom}
         minZoom={6}
-        maxZoom={18}
-        maxBounds={bounds}
+        maxZoom={19}
+        maxBounds={ghanaViewBounds}
         maxBoundsViscosity={0.8}
         zoomControl={false}
+        fadeAnimation={false}
         scrollWheelZoom
         className="z-0 h-full w-full"
       >
-        <EarthBaseLayer
-          key={imageryYear}
-          year={imageryYear}
-          onSourceChange={setSourceLabel}
-        />
+        <EarthBaseLayer key={attempt} onStateChange={setImagery} />
+        <MapNavigation />
+        <ZoomControl position="bottomright" />
+        <ScaleControl position="bottomright" imperial={false} />
         {features.map((feature) => {
           const selected = feature.id === selectedFeatureId;
           const events = { click: () => onSelectFeature(feature) };
@@ -101,9 +108,19 @@ export function HotspotMap({
       </MapContainer>
       <div
         role="status"
-        className="pointer-events-none absolute bottom-16 left-3 z-[450] max-w-[calc(100%-1.5rem)] rounded-lg bg-black/70 px-3 py-1.5 text-[10px] text-white sm:bottom-16"
+        data-provider={imagery?.provider}
+        className={`absolute left-3 z-[450] max-w-[70%] rounded-lg bg-black/70 px-3 py-1.5 text-[10px] text-white ${timelineVisible ? "bottom-16" : "bottom-6"}`}
       >
-        {sourceLabel}
+        {imagery?.label ?? "Loading satellite imagery..."}
+        {imagery?.state === "unavailable" && (
+          <button
+            type="button"
+            onClick={() => setAttempt((value) => value + 1)}
+            className="ml-2 font-bold underline"
+          >
+            Retry imagery
+          </button>
+        )}
       </div>
     </div>
   );

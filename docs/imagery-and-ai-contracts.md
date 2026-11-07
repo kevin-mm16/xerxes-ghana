@@ -2,11 +2,15 @@
 
 ## Current display
 
-The only active base view is unlabelled satellite imagery. Digital Earth Africa WMS `gm_s2_semiannual`, style `simple_rgb`, supplies a Sentinel-2 composite for an explicitly advertised date. The timeline selects an available composite no later than the selected year and the actual date is displayed. This is not a live satellite feed.
+The only active base view is unlabelled satellite/aerial imagery. Cached Esri World Imagery is the primary display source, so users can inspect terrain, fields, roads, and buildings at detailed zoom levels without waiting for a composite WMS render. Acquisition date and native detail vary by location; this is neither a live feed nor a historical time-series source.
 
-`scripts/verify_imagery.py` fetches live GetCapabilities, checks layer/style/time dimensions, and fetches real PNG GetMap responses over Ghana. Its output catalog is checked in at `apps/web/src/config/imagery-catalog.json`. Verification uses WMS 1.3/EPSG:3857 to match Leaflet and avoid EPSG:4326 axis-order reversal. `ndvi_anomaly`/`style_ndvi_mean` is also validated for a future vegetation view, but is not exposed in the current satellite-only interface.
+The workspace opens closer over southern Ghana. A Ghana overview button fits the country display bounds; zoom/scale controls and a coordinate navigator support closer inspection without creating observations or requesting device location. Tile fading is disabled to prevent pale transitional tile squares during source changes. No decorative satellite texture or synthetic raster is rendered.
 
-If WMS tiles fail or stall, the renderer tries Esri World Imagery without town labels. Its acquisition dates are not linked to the timeline and that distinction is shown. If both providers fail, vector overlays and controls remain usable; it does not silently replace satellite imagery with street maps. These external services can still be slow or partially unavailable.
+Digital Earth Africa WMS `gm_s2_semiannual`, style `simple_rgb`, is a lower-detail Sentinel-2 fallback. It uses an explicitly advertised date, displayed with its reduced-detail status. Recovery evaluates a complete tile batch: isolated errors do not discard already loaded detailed imagery. Stalled or wholly failed batches advance to the fallback; if both sources fail, users can retry while vector controls remain available.
+
+`scripts/verify_imagery.py` fetches live GetCapabilities, checks layer/style/time dimensions, and fetches real Ghana PNG responses. Its catalog is checked in at `apps/web/src/config/imagery-catalog.json`. WMS verification uses 1.3/EPSG:3857 to avoid EPSG:4326 axis-order reversal. `ndvi_anomaly`/`style_ndvi_mean` remains validated preparation, not an active view.
+
+The observation timeline is shown only when reviewed observations are enabled and actually have dates. It filters observation records, never remounts or changes the photographic basemap, and defaults to all observation years. Historical imagery controls require a future reproducible scene pipeline rather than implying that World Imagery matches a selected year.
 
 Sources: [DE Africa GeoMAD](https://docs.digitalearthafrica.org/en/latest/data_specs/GeoMAD_specs.html), [NDVI anomaly](https://docs.digitalearthafrica.org/en/latest/data_specs/NDVI_Anomaly_specs.html), [live capabilities](https://ows.digitalearth.africa/wms?service=WMS&request=GetCapabilities&version=1.3.0), [Esri service attribution](https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer?f=pjson). Preserve license/attribution requirements when replacing display providers.
 

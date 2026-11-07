@@ -1,40 +1,64 @@
-import { expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
 import { EarthBaseLayer } from "@/components/map/EarthBaseLayer";
 
+type Handlers = {
+  tileload: () => void;
+  tileerror: () => void;
+  load: () => void;
+};
 vi.mock("react-leaflet", () => ({
-  WMSTileLayer: ({
-    eventHandlers,
-  }: {
-    eventHandlers: { tileerror: () => void };
-  }) => (
-    <button onClick={eventHandlers.tileerror}>Primary satellite failure</button>
+  TileLayer: ({ eventHandlers: h }: { eventHandlers: Handlers }) => (
+    <div>
+      <button onClick={h.tileload}>Detailed tile loaded</button>
+      <button onClick={h.tileerror}>Detailed tile failed</button>
+      <button onClick={h.load}>Detailed batch finished</button>
+    </div>
   ),
-  TileLayer: ({
-    eventHandlers,
-  }: {
-    eventHandlers: { tileerror: () => void };
-  }) => (
-    <button onClick={eventHandlers.tileerror}>
-      Fallback satellite failure
-    </button>
+  WMSTileLayer: ({ eventHandlers: h }: { eventHandlers: Handlers }) => (
+    <div>
+      <button onClick={h.tileerror}>Composite tile failed</button>
+      <button onClick={h.load}>Composite batch finished</button>
+    </div>
   ),
 }));
-it("falls back to a second satellite provider, then keeps the map usable without imagery", async () => {
+afterEach(() => vi.useRealTimers());
+
+it("starts with detailed satellite tiles and keeps them when only part of a batch fails", () => {
   const report = vi.fn();
-  render(<EarthBaseLayer year={2026} onSourceChange={report} />);
-  fireEvent.click(screen.getByText("Primary satellite failure"));
-  fireEvent.click(screen.getByText("Primary satellite failure"));
-  await screen.findByText("Fallback satellite failure");
+  render(<EarthBaseLayer onStateChange={report} />);
+  expect(screen.queryByText("Composite tile failed")).toBeNull();
+  fireEvent.click(screen.getByText("Detailed tile failed"));
+  fireEvent.click(screen.getByText("Detailed tile failed"));
+  fireEvent.click(screen.getByText("Detailed tile loaded"));
+  fireEvent.click(screen.getByText("Detailed batch finished"));
+  expect(screen.getByText("Detailed tile loaded")).toBeTruthy();
   expect(report).toHaveBeenCalledWith(
-    expect.stringContaining("not linked to selected year"),
+    expect.objectContaining({ provider: "esri", state: "ready" }),
   );
-  fireEvent.click(screen.getByText("Fallback satellite failure"));
-  fireEvent.click(screen.getByText("Fallback satellite failure"));
-  await waitFor(() =>
-    expect(report).toHaveBeenCalledWith(
-      "Satellite imagery unavailable; monitoring overlays remain usable.",
-    ),
+});
+it("falls back only for a failed batch, and reports when neither satellite service works", () => {
+  const report = vi.fn();
+  render(<EarthBaseLayer onStateChange={report} />);
+  fireEvent.click(screen.getByText("Detailed tile failed"));
+  fireEvent.click(screen.getByText("Detailed batch finished"));
+  expect(screen.getByText("Composite tile failed")).toBeTruthy();
+  expect(report).toHaveBeenCalledWith(
+    expect.objectContaining({
+      provider: "deafrica",
+      label: expect.stringContaining("lower detail"),
+    }),
+  );
+  fireEvent.click(screen.getByText("Composite tile failed"));
+  fireEvent.click(screen.getByText("Composite batch finished"));
+  expect(report).toHaveBeenCalledWith(
+    expect.objectContaining({ state: "unavailable" }),
   );
   expect(screen.queryByRole("button")).toBeNull();
+});
+it("recovers from a satellite source that never produces a usable image", () => {
+  vi.useFakeTimers();
+  render(<EarthBaseLayer onStateChange={vi.fn()} />);
+  act(() => vi.advanceTimersByTime(15001));
+  expect(screen.getByText("Composite tile failed")).toBeTruthy();
 });
