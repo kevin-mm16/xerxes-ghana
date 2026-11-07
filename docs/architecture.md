@@ -31,3 +31,11 @@ Keep confidential report processing logically and operationally isolated from pu
 - Data protection, audit trails and recoverability are requirements, not implied by the current scaffold.
 
 See `docs/adr/0001-modular-monolith.md`.
+
+## Implemented web structure
+
+Galamsey Watch is the initial interface within `apps/web`, using Next.js App Router. The public route group `app/(public)` owns the shared navigation, footer, and public report routes. `app/moderator` owns the login and dashboard routes; the dashboard has its own layout. These layouts organize the interface and do not enforce authentication.
+
+Page content lives in `src/views`, reusable components in `src/components`, synthetic data in `src/data`, shared types in `src/types`, utilities in `src/utils`, and global styling in `src/styles`. Only interactive components are marked as client components. Leaflet imports are isolated behind `src/components/map/BrowserMaps.tsx` because the map library requires browser globals.
+
+The interface currently reads sample data directly. It does not yet call FastAPI or persist to PostGIS. API implementation remains in `apps/api`; satellite processing, AI, infrastructure, and XNP research retain their existing top-level directories. See [the frontend guide](galamsey-watch.md) for routes and local commands.

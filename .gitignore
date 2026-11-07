@@ -43,3 +43,13 @@ models/*.pth
 *.tif
 *.tiff
 *.gpkg
+
+# Local frontend development logs
+vite-dev*.log
+npm-debug.log*
+
+.vite/
+
+# Versioned synthetic UI fixtures
+!apps/web/src/data/
+!apps/web/src/data/**
