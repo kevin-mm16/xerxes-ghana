@@ -22,3 +22,9 @@ This repository is an early scaffold, **not** a secure investigative production 
 - Threat monitoring, audit retention and incident-response runbooks
 - Disaster recovery with tested RTO/RPO
 - Security assessment, privacy review and operating procedures
+
+## Implemented local boundaries
+
+Capture points and original intake descriptions are stored separately from sanitized public publication records. Public API queries never join capture locations, pending records return 404, and intake cannot set review/publication fields. The contribution UI does not plot exact capture positions through a third-party tile provider. GPS input is untrusted and coverage is validated server-side with accuracy-aware boundary semantics.
+
+Native services bind to loopback. Root `.env` and `.local` artifacts are ignored. SQL parameters are hidden and API access logging is disabled by the local runner. No application identity data is requested; this does not guarantee anonymity. Moderation authentication, audit trails, anti-abuse controls, least-privilege database roles, retention/deletion procedures, evidence handling, and production infrastructure remain prerequisites. The current local publication helper is development-only and is not an authorization system.

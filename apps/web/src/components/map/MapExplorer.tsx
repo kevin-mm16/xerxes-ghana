@@ -1,139 +1,200 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { MediaType, Report, ReportStatus, SeverityLevel } from "@/types";
-import { FilterChip } from "@/components/ui/FilterChip";
-import { HotspotMap } from "@/components/map/BrowserMaps";
-import { HotspotCard } from "@/components/map/HotspotCard";
-import { MapFilters, type MapFilterState } from "@/components/map/MapFilters";
-import { SafetyNotice } from "@/components/ui/SafetyNotice";
-import { mockHotspots } from "@/data/mockHotspots";
-import { mockReports } from "@/data/mockReports";
+import type { MapLayerKey, MapLayerState } from "@/types/intelligence";
+import { useMapFeatures } from "@/hooks/useMapFeatures";
+import { HotspotMap } from "./BrowserMaps";
+import { IntelligenceDrawer } from "./IntelligenceDrawer";
+import { MapFilters, type MapFilterState } from "./MapFilters";
+import { MapLayerControl } from "./MapLayerControl";
+import { TimelineControl } from "./TimelineControl";
 
-const defaultFilters: MapFilterState = {
-  region: "All",
-  search: "",
-  severity: "All",
-  status: "All",
-  dateRange: "Last 30 days",
-  verifiedOnly: false,
-  mediaType: "All",
+const defaultFilters: MapFilterState = { search: "", dateRange: "All" };
+// Show reference districts immediately; monitoring and analysis remain opt-in.
+const defaultLayers: MapLayerState = {
+  coverage: false,
+  observations: false,
+  ai: false,
+  satellite: false,
+  boundaries: true,
 };
 
-const referenceDate = new Date("2026-07-09T00:00:00Z");
-
-function withinDateRange(report: Report, range: MapFilterState["dateRange"]) {
-  if (range === "All") return true;
-
-  const days = range === "Last 7 days" ? 7 : range === "Last 30 days" ? 30 : 90;
-  const submitted = new Date(`${report.dateSubmitted}T00:00:00Z`);
-  const diff = referenceDate.getTime() - submitted.getTime();
-  return diff <= days * 24 * 60 * 60 * 1000;
-}
-
-function matchesFilter<T extends string>(value: T, filter: T | "All") {
-  return filter === "All" || value === filter;
-}
-
-export function MapExplorer() {
-  const [filters, setFilters] = useState<MapFilterState>(defaultFilters);
-
-  const filteredReports = useMemo(() => {
-    const search = filters.search.trim().toLowerCase();
-
-    return mockReports.filter((report) => {
-      const matchesSearch =
-        !search ||
-        report.district.toLowerCase().includes(search) ||
-        report.approximateLocationLabel.toLowerCase().includes(search) ||
-        report.title.toLowerCase().includes(search);
-
-      return (
-        matchesFilter(report.region, filters.region) &&
-        matchesFilter<SeverityLevel>(report.severity, filters.severity) &&
-        matchesFilter<ReportStatus>(report.status, filters.status) &&
-        matchesFilter<MediaType>(report.mediaType, filters.mediaType) &&
-        matchesSearch &&
-        withinDateRange(report, filters.dateRange) &&
-        (!filters.verifiedOnly || report.status === "Verified")
-      );
-    });
-  }, [filters]);
-
-  const filteredReportIds = new Set(filteredReports.map((report) => report.id));
-  const filteredHotspots = mockHotspots.filter((hotspot) => filteredReportIds.has(hotspot.reportId));
-  const summary = [
-    { label: "Visible pins", value: String(filteredHotspots.length) },
-    { label: "Critical", value: String(filteredReports.filter((report) => report.severity === "Critical").length) },
-    { label: "Verified", value: String(filteredReports.filter((report) => report.status === "Verified").length) },
-    { label: "Escalated", value: String(filteredReports.filter((report) => report.status === "Escalated").length) },
-  ];
-
-  const clearFilter = (key: keyof MapFilterState) => {
-    setFilters((current) => ({ ...current, [key]: defaultFilters[key] }));
-  };
-
-  const activeFilters = [
-    filters.region !== "All" ? { key: "region" as const, label: "Region", value: filters.region } : null,
-    filters.search ? { key: "search" as const, label: "Search", value: filters.search } : null,
-    filters.severity !== "All" ? { key: "severity" as const, label: "Severity", value: filters.severity } : null,
-    filters.status !== "All" ? { key: "status" as const, label: "Status", value: filters.status } : null,
-    filters.dateRange !== "All" ? { key: "dateRange" as const, label: "Date", value: filters.dateRange } : null,
-    filters.mediaType !== "All" ? { key: "mediaType" as const, label: "Media", value: filters.mediaType } : null,
-    filters.verifiedOnly ? { key: "verifiedOnly" as const, label: "Verified only", value: "" } : null,
-  ].filter(Boolean) as Array<{ key: keyof MapFilterState; label: string; value: string }>;
-
+export function MapExplorer({
+  variant = "workspace",
+}: {
+  variant?: "workspace" | "preview";
+}) {
+  const data = useMapFeatures();
+  const [filters, setFilters] = useState(defaultFilters);
+  const [layers, setLayers] = useState(defaultLayers);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [layersOpen, setLayersOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string>();
+  const [selectedYear, setSelectedYear] = useState<number>();
+  const [showLabels, setShowLabels] = useState(true);
+  const compact = variant === "preview";
+  const features = useMemo(
+    () =>
+      data.features.filter((feature) => {
+        if (!layers[feature.properties.layer]) return false;
+        if (
+          selectedYear !== undefined &&
+          feature.observedAt &&
+          Number(feature.observedAt.slice(0, 4)) !== selectedYear
+        )
+          return false;
+        const search = filters.search.toLowerCase().trim();
+        if (
+          search &&
+          ![
+            feature.properties.title,
+            feature.properties.coverageCode,
+            feature.properties.summary,
+            feature.properties.publicLabel,
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(search)
+        )
+          return false;
+        if (feature.observedAt && filters.dateRange !== "All") {
+          const days =
+            filters.dateRange === "Last 7 days"
+              ? 7
+              : filters.dateRange === "Last 30 days"
+                ? 30
+                : 90;
+          const age = Date.now() - Date.parse(feature.observedAt);
+          if (age < 0 || age > days * 86400000) return false;
+        }
+        return true;
+      }),
+    [data.features, filters, layers, selectedYear],
+  );
+  const counts = useMemo(() => {
+    const result: Record<MapLayerKey, number> = {
+      coverage: 0,
+      observations: 0,
+      ai: 0,
+      satellite: 0,
+      boundaries: 0,
+    };
+    for (const feature of data.features) result[feature.properties.layer]++;
+    return result;
+  }, [data.features]);
+  const selected = features.find((feature) => feature.id === selectedId);
+  const years = Array.from(
+    new Set(
+      data.features
+        .filter(
+          (feature) =>
+            feature.properties.layer === "observations" && feature.observedAt,
+        )
+        .map((feature) => Number(feature.observedAt!.slice(0, 4))),
+    ),
+  ).sort((a, b) => a - b);
+  const timelineVisible = !compact && layers.observations && years.length > 0;
   return (
-    <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-      <MapFilters filters={filters} onChange={setFilters} onReset={() => setFilters(defaultFilters)} />
-
-      <div className="space-y-6">
-        <SafetyNotice title="Public location privacy" tone="privacy">
-          Public map pins are generalized. Exact coordinates and raw evidence are private moderator-only data in this
-          frontend stage.
-        </SafetyNotice>
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
-            {activeFilters.length > 0 ? (
-              activeFilters.map((filter) => (
-                <FilterChip
-                  key={filter.key}
-                  label={filter.label}
-                  value={filter.value}
-                  onRemove={() => clearFilter(filter.key)}
-                />
-              ))
-            ) : (
-              <span className="text-sm text-muted">No active filters</span>
-            )}
+    <div
+      className={
+        compact
+          ? "relative overflow-hidden rounded-3xl border border-line bg-[#17251d] shadow-card"
+          : "relative h-[calc(100dvh-104px)] min-h-[420px] overflow-hidden bg-[#17251d]"
+      }
+    >
+      <HotspotMap
+        showLabels={showLabels}
+        timelineVisible={timelineVisible}
+        features={features}
+        selectedFeatureId={selectedId}
+        onSelectFeature={(feature) => setSelectedId(feature.id)}
+        compact={compact}
+      />
+      <div className="absolute left-3 top-3 z-[600] flex max-w-[calc(100%-13rem)] flex-wrap gap-2">
+        {!compact && (
+          <button
+            type="button"
+            aria-expanded={filtersOpen}
+            onClick={() => {
+              setFiltersOpen(!filtersOpen);
+              setLayersOpen(false);
+            }}
+            className="rounded-xl bg-white/95 px-4 py-2.5 text-sm font-bold shadow-lift"
+          >
+            Filters
+          </button>
+        )}
+        <button
+          type="button"
+          aria-expanded={layersOpen}
+          aria-controls="map-layers"
+          onClick={() => {
+            setLayersOpen(!layersOpen);
+            setFiltersOpen(false);
+          }}
+          className="rounded-xl bg-white/95 px-4 py-2.5 text-sm font-bold shadow-lift"
+        >
+          Layers
+        </button>
+        {data.loading && (
+          <span role="status" className="rounded-xl bg-white/95 p-3 text-xs">
+            Loading monitoring data...
+          </span>
+        )}
+        {data.error && (
+          <div
+            role="alert"
+            className="max-w-64 rounded-xl bg-white/95 p-3 text-xs"
+          >
+            Monitoring data unavailable.{" "}
+            <button
+              type="button"
+              onClick={data.retry}
+              className="font-bold underline"
+            >
+              Retry
+            </button>
           </div>
-          <p className="text-sm text-muted">
-            Showing <strong className="text-ink">{filteredReports.length}</strong> report previews
-          </p>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {summary.map((item) => (
-            <div key={item.label} className="rounded-2xl border border-line bg-white px-4 py-3 shadow-card">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-faint">{item.label}</p>
-              <p className="mt-2 font-serif text-3xl font-semibold leading-none text-forest-800">{item.value}</p>
-            </div>
-          ))}
-        </div>
-
-        <HotspotMap hotspots={filteredHotspots} reports={filteredReports} />
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filteredReports.length > 0 ? (
-            filteredReports.map((report) => <HotspotCard key={report.id} report={report} />)
-          ) : (
-            <div className="rounded-2xl border border-dashed border-line bg-white p-8 text-center text-muted md:col-span-2 xl:col-span-3">
-              No public report previews match these filters.
-            </div>
-          )}
-        </div>
+        )}
+        {data.truncated && (
+          <span className="rounded-xl bg-white/95 p-3 text-xs">
+            Some features are omitted by the service limit.
+          </span>
+        )}
       </div>
+      {filtersOpen && (
+        <div className="absolute left-3 top-16 z-[640] max-h-[50dvh] w-[min(300px,calc(100%-1.5rem))] overflow-y-auto">
+          <MapFilters
+            filters={filters}
+            onChange={setFilters}
+            onReset={() => setFilters(defaultFilters)}
+          />
+        </div>
+      )}
+      {layersOpen && (
+        <div className="absolute left-3 top-16 z-[640]">
+          <MapLayerControl
+            layers={layers}
+            onChange={setLayers}
+            counts={counts}
+            showLabels={showLabels}
+            onLabelsChange={setShowLabels}
+          />
+        </div>
+      )}
+      {timelineVisible && (
+        <div className="absolute bottom-3 left-3 right-3 z-[600] lg:right-[408px]">
+          <TimelineControl
+            years={years}
+            selectedYear={selectedYear}
+            onSelect={setSelectedYear}
+          />
+        </div>
+      )}
+      <IntelligenceDrawer
+        feature={selected}
+        onClose={() => setSelectedId(undefined)}
+      />
     </div>
   );
 }

@@ -11,6 +11,11 @@ dependencies = [
   "fastapi>=0.115,<1",
   "uvicorn[standard]>=0.30,<1",
   "psycopg[binary]>=3.2,<4",
+  "SQLAlchemy>=2.0,<3",
+  "GeoAlchemy2>=0.17,<1",
+  "alembic>=1.14,<2",
+  "python-dotenv>=1,<2",
+  "pyshp>=2.3,<3",
 ]
 
 [project.optional-dependencies]
@@ -25,3 +30,6 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+
+[tool.setuptools.package-data]
+xerxes_api = ["data/*.geojson"]

@@ -4,15 +4,15 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 const sections = [
   {
     title: "What the platform does",
-    body: "It demonstrates safe anonymous reporting, private moderation, approximate public maps, status-labelled reports, and sanitized evidence previews for suspected galamsey monitoring.",
+    body: "It provides satellite imagery, database-backed monitoring areas, GPS coverage checks, private observation intake, and separately reviewed public summaries.",
   },
   {
     title: "What it does not do yet",
-    body: "It does not collect real reports, upload media, authenticate moderators, store files, process satellite imagery, run machine learning, or notify authorities.",
+    body: "It does not upload media, authenticate moderators, process satellite imagery, run AI inference, or notify authorities. The moderator interface remains a demonstration.",
   },
   {
     title: "Anonymous reporting principles",
-    body: "The current frontend does not require name, phone, email, or account details. A production system still needs a full threat model and security review before launch.",
+    body: "No name, phone, email, or account details are requested. This does not guarantee anonymity. Exact capture locations and original intake text are stored privately for review.",
   },
   {
     title: "Verification process",
@@ -40,15 +40,21 @@ export function AboutSafetyPage() {
 
         <div className="mb-6">
           <SafetyNotice title="Reporter safety">
-            Do not put yourself in danger. Do not confront miners. Submit reports only when it is safe.
+            Do not put yourself in danger. Do not confront miners. Submit
+            reports only when it is safe.
           </SafetyNotice>
         </div>
 
         <div className="grid gap-5 md:grid-cols-2">
           {sections.map((section) => (
-            <article key={section.title} className="rounded-2xl border border-line bg-white p-6 shadow-card">
+            <article
+              key={section.title}
+              className="rounded-2xl border border-line bg-white p-6 shadow-card"
+            >
               <h2 className="text-lg font-bold">{section.title}</h2>
-              <p className="mt-3 text-sm leading-7 text-muted">{section.body}</p>
+              <p className="mt-3 text-sm leading-7 text-muted">
+                {section.body}
+              </p>
             </article>
           ))}
         </div>

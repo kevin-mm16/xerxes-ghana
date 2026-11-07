@@ -1,7 +1,7 @@
-# Infrastructure
+# Local infrastructure
 
-The root `compose.yaml` is a **development-only** convenience.
+Native execution is the current validated path. The prepared isolated PostgreSQL/PostGIS runtime lives under `%LOCALAPPDATA%/Xersxes/postgresql18` on loopback port 55432. It does not alter the system PostgreSQL service. Run `python scripts/start_database.py` to restart it after a reboot. Root `.env` holds local connection URLs; never commit it. Configure backups and retention before collecting consequential reports.
 
-Production architecture, privacy guarantees, backup retention, geographic failover and incident recovery are not yet implemented. All deployment changes require threat modeling and review.
+The development-only Compose file is prepared to initialize migrations/demo coverage before API readiness and start the web proxy afterward. Host database port 55433 avoids the native instances; application ports remain 8000/3000. Docker execution was explicitly deferred and is not claimed as tested.
 
-Do not expose the local PostGIS port or copy development credentials to production.
+Production hosting, independent confidential evidence handling, secret management, least-privilege roles, backup retention, tested restores, and incident recovery are not implemented. Do not expose development services publicly.

@@ -18,9 +18,11 @@ Start from `develop`; create `feature/<brief-name>` or `fix/<brief-name>`. Open 
 ```bash
 docker compose up --build
 cd apps/api && python -m pip install -e ".[dev]" && pytest
-cd apps/web && npm ci && npm run typecheck && npm run build
+cd apps/web && npm ci && npm run test && npm run typecheck && npm run build
 ```
 
 Keep frontend work in `apps/web`: route and layout files belong in `app`, page content in `src/views`, reusable interface code in `src/components`, and synthetic fixtures in `src/data`. Import Leaflet maps through `src/components/map/BrowserMaps.tsx` so the rest of each page can render on the server.
 
 Commit the web lockfile alongside dependency changes. Python dependency locking and automated dependency updates remain planned.
+
+Spatial tests require a real PostGIS `TEST_DATABASE_URL` whose database name ends in `_test`; CI provisions it. Use `scripts/run_api.py test` for the prepared native environment. Follow the root README for native execution; Docker validation is currently deferred.

@@ -19,7 +19,7 @@ Next.js web -> FastAPI core -> PostgreSQL/PostGIS
 - Evidence provenance and controlled publication
 - Drone registry and simulation (not aircraft control)
 
-Keep confidential report processing logically and operationally isolated from public traffic. There are no live sensitive-intake endpoints in the scaffold.
+Keep confidential report processing logically and operationally isolated from public traffic. Private observation intake now exists; it is local development functionality and must not be exposed as a high-assurance source-protection service.
 
 ## Design decisions
 
@@ -38,4 +38,4 @@ Galamsey Watch is the initial interface within `apps/web`, using Next.js App Rou
 
 Page content lives in `src/views`, reusable components in `src/components`, synthetic data in `src/data`, shared types in `src/types`, utilities in `src/utils`, and global styling in `src/styles`. Only interactive components are marked as client components. Leaflet imports are isolated behind `src/components/map/BrowserMaps.tsx` because the map library requires browser globals.
 
-The interface currently reads sample data directly. It does not yet call FastAPI or persist to PostGIS. API implementation remains in `apps/api`; satellite processing, AI, infrastructure, and XNP research retain their existing top-level directories. See [the frontend guide](galamsey-watch.md) for routes and local commands.
+The map now reads public GeoJSON from FastAPI/PostGIS through a typed adapter and same-origin Next.js proxy. Only published, independently sanitized observations are public; capture and reviewed activity locations have separate private tables. Contribution sends GPS accuracy/timestamp/source and repeats authoritative coverage validation on intake. The moderator interface remains a disconnected demo. See [the implemented foundation](geospatial-foundation.md) and [future imagery/AI contracts](imagery-and-ai-contracts.md).
