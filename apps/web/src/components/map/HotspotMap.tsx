@@ -6,6 +6,7 @@ import {
   MapContainer,
   Polygon,
   ScaleControl,
+  TileLayer,
   Tooltip,
   ZoomControl,
 } from "react-leaflet";
@@ -15,14 +16,9 @@ import { EarthBaseLayer } from "./EarthBaseLayer";
 import { MapNavigation } from "./MapNavigation";
 import { ghanaViewBounds, initialMapView } from "@/utils/map-view";
 import type { ImageryStatus } from "@/services/imagery";
+import { placeLabels } from "@/services/imagery";
+import type { IntelligenceMapProps } from "./map-props";
 
-interface Props {
-  timelineVisible?: boolean;
-  features: IntelligenceFeature[];
-  selectedFeatureId?: string;
-  onSelectFeature: (feature: IntelligenceFeature) => void;
-  compact?: boolean;
-}
 function positions(
   feature: IntelligenceFeature,
 ): LatLngExpression[][] | LatLngExpression[][][] {
@@ -40,8 +36,10 @@ export function HotspotMap({
   selectedFeatureId,
   onSelectFeature,
   compact = false,
-}: Props) {
+  showLabels = true,
+}: IntelligenceMapProps) {
   const [imagery, setImagery] = useState<ImageryStatus>();
+  const [labelsFailed, setLabelsFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   return (
     <div
@@ -64,6 +62,25 @@ export function HotspotMap({
         className="z-0 h-full w-full"
       >
         <EarthBaseLayer key={attempt} onStateChange={setImagery} />
+        {showLabels && (
+          <TileLayer
+            url={placeLabels.transportUrl}
+            maxNativeZoom={19}
+            zIndex={399}
+            updateWhenIdle
+            eventHandlers={{ tileerror: () => setLabelsFailed(true) }}
+          />
+        )}
+        {showLabels && (
+          <TileLayer
+            url={placeLabels.url}
+            attribution={placeLabels.attribution}
+            maxNativeZoom={19}
+            zIndex={400}
+            updateWhenIdle
+            eventHandlers={{ tileerror: () => setLabelsFailed(true) }}
+          />
+        )}
         <MapNavigation />
         <ZoomControl position="bottomright" />
         <ScaleControl position="bottomright" imperial={false} />
@@ -77,9 +94,14 @@ export function HotspotMap({
                 positions={positions(feature)}
                 pathOptions={{
                   color:
-                    feature.type === "coverage_region" ? "#00d084" : "#f59e0b",
+                    feature.type === "administrative_boundary"
+                      ? "#f8df8b"
+                      : feature.type === "coverage_region"
+                        ? "#00d084"
+                        : "#f59e0b",
                   weight: selected ? 4 : 2,
-                  fillOpacity: 0.08,
+                  fillOpacity:
+                    feature.type === "administrative_boundary" ? 0.015 : 0.08,
                 }}
                 eventHandlers={events}
               >
@@ -112,6 +134,13 @@ export function HotspotMap({
         className={`absolute left-3 z-[450] max-w-[70%] rounded-lg bg-black/70 px-3 py-1.5 text-[10px] text-white ${timelineVisible ? "bottom-16" : "bottom-6"}`}
       >
         {imagery?.label ?? "Loading satellite imagery..."}
+        {showLabels &&
+          (labelsFailed
+            ? " | Some place labels unavailable"
+            : " | Esri place labels")}
+        {features.some(
+          (feature) => feature.type === "administrative_boundary",
+        ) && " | Districts: GSS 2021 census"}
         {imagery?.state === "unavailable" && (
           <button
             type="button"

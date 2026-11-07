@@ -1,8 +1,14 @@
 import type { MediaType, ReportStatus, SeverityLevel } from "@/types";
 
-export type MapLayerKey = "coverage" | "observations" | "ai" | "satellite";
+export type MapLayerKey =
+  | "coverage"
+  | "observations"
+  | "ai"
+  | "satellite"
+  | "boundaries";
 
 export type IntelligenceFeatureType =
+  | "administrative_boundary"
   | "coverage_region"
   | "citizen_observation"
   | "approved_video"
@@ -51,6 +57,11 @@ export interface IntelligenceFeatureProperties {
   inferenceTimestamp?: string;
   sourceImagery?: string[];
   reviewState?: string;
+  sourceUrl?: string;
+  datasetVersion?: string;
+  boundaryLevel?: string;
+  licenseNote?: string;
+  sourceDate?: string;
 }
 
 export interface IntelligenceFeature {
@@ -66,4 +77,5 @@ export interface MapLayerState {
   observations: boolean;
   ai: boolean;
   satellite: boolean;
+  boundaries: boolean;
 }

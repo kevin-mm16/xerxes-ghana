@@ -48,6 +48,12 @@ export interface MapApiFeature {
     confidence?: number;
     sourceImagery?: string[];
     reviewState?: string;
+    sourceUrl?: string;
+    datasetVersion?: string;
+    boundaryLevel?: string;
+    licenseNote?: string;
+    region?: string;
+    sourceDate?: string;
   };
 }
 export interface MapFeatureCollection {

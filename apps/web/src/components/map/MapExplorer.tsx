@@ -10,12 +10,13 @@ import { MapLayerControl } from "./MapLayerControl";
 import { TimelineControl } from "./TimelineControl";
 
 const defaultFilters: MapFilterState = { search: "", dateRange: "All" };
-// The initial workspace is unlabelled satellite imagery. Reviewed overlays are opt-in.
+// Place labels are part of the photographic base. Data overlays remain opt-in.
 const defaultLayers: MapLayerState = {
   coverage: false,
   observations: false,
   ai: false,
   satellite: false,
+  boundaries: false,
 };
 
 export function MapExplorer({
@@ -30,6 +31,7 @@ export function MapExplorer({
   const [layersOpen, setLayersOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string>();
   const [selectedYear, setSelectedYear] = useState<number>();
+  const [showLabels, setShowLabels] = useState(true);
   const compact = variant === "preview";
   const features = useMemo(
     () =>
@@ -75,6 +77,7 @@ export function MapExplorer({
       observations: 0,
       ai: 0,
       satellite: 0,
+      boundaries: 0,
     };
     for (const feature of data.features) result[feature.properties.layer]++;
     return result;
@@ -100,13 +103,14 @@ export function MapExplorer({
       }
     >
       <HotspotMap
+        showLabels={showLabels}
         timelineVisible={timelineVisible}
         features={features}
         selectedFeatureId={selectedId}
         onSelectFeature={(feature) => setSelectedId(feature.id)}
         compact={compact}
       />
-      <div className="absolute left-3 top-3 z-[600] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
+      <div className="absolute left-3 top-3 z-[600] flex max-w-[calc(100%-13rem)] flex-wrap gap-2">
         {!compact && (
           <button
             type="button"
@@ -173,6 +177,8 @@ export function MapExplorer({
             layers={layers}
             onChange={setLayers}
             counts={counts}
+            showLabels={showLabels}
+            onLabelsChange={setShowLabels}
           />
         </div>
       )}

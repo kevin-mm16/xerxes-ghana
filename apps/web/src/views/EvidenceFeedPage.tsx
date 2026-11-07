@@ -4,7 +4,7 @@ import AppLink from "next/link";
 import { useMapFeatures } from "@/hooks/useMapFeatures";
 
 export function EvidenceFeedPage() {
-  const data = useMapFeatures();
+  const data = useMapFeatures("observations");
   const observations = data.features.filter(
     (feature) => feature.properties.layer === "observations",
   );

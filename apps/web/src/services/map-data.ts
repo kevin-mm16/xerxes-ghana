@@ -1,4 +1,4 @@
-import type { IntelligenceFeature } from "@/types/intelligence";
+import type { IntelligenceFeature, MapLayerKey } from "@/types/intelligence";
 import type { MapApiFeature, MapFeatureCollection } from "@/types/api";
 import { apiRequest } from "./api";
 
@@ -26,12 +26,23 @@ export function adaptMapFeature(feature: MapApiFeature): IntelligenceFeature {
       inferenceTimestamp: p.inferenceTimestamp,
       sourceImagery: p.sourceImagery,
       reviewState: p.reviewState,
+      sourceUrl: p.sourceUrl,
+      datasetVersion: p.datasetVersion,
+      boundaryLevel: p.boundaryLevel,
+      licenseNote: p.licenseNote,
+      region: p.region,
+      sourceDate: p.sourceDate,
     },
   };
 }
-export async function getMapFeatures(signal?: AbortSignal) {
+export async function getMapFeatures(
+  signal?: AbortSignal,
+  layer: MapLayerKey | "all" = "all",
+) {
+  const layers =
+    layer === "all" ? "coverage,observations,ai,satellite,boundaries" : layer;
   const collection = await apiRequest<MapFeatureCollection>(
-    "/map/features?bbox=-3.5,4.3,1.5,11.3&layers=coverage,observations,ai,satellite",
+    `/map/features?bbox=-3.5,4.3,1.5,11.3&layers=${layers}`,
     { signal },
   );
   if (

@@ -8,6 +8,7 @@ interface IntelligenceDrawerProps {
 }
 
 const featureLabels: Record<IntelligenceFeature["type"], string> = {
+  administrative_boundary: "District boundary",
   coverage_region: "Coverage region",
   citizen_observation: "Public observation",
   approved_video: "Approved video",
@@ -118,6 +119,22 @@ export function IntelligenceDrawer({
         <p className="mt-3 text-xs text-amber-900">
           Demonstration monitoring geometry; not a legal boundary.
         </p>
+      )}
+      {feature.properties.datasetVersion && (
+        <p className="mt-3 text-xs text-muted">
+          Dataset: {feature.properties.datasetVersion}. Census geography; check
+          with GSS for later changes.
+        </p>
+      )}
+      {feature.properties.sourceUrl && (
+        <a
+          className="mt-2 inline-block text-xs font-semibold underline"
+          href={feature.properties.sourceUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          View boundary source
+        </a>
       )}
       {feature.properties.coverageCode && (
         <p className="mt-2 font-mono text-xs">

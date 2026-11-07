@@ -129,9 +129,18 @@ describe("monitoring layers", () => {
           observations: false,
           ai: false,
           satellite: false,
+          boundaries: false,
         }}
         onChange={change}
-        counts={{ coverage: 3, observations: 0, ai: 0, satellite: 0 }}
+        counts={{
+          coverage: 3,
+          observations: 0,
+          ai: 0,
+          satellite: 0,
+          boundaries: 0,
+        }}
+        showLabels={true}
+        onLabelsChange={vi.fn()}
       />,
     );
     expect(screen.queryByRole("radio")).toBeNull();
