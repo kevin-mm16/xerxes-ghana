@@ -133,14 +133,25 @@ export function HotspotMap({
         data-provider={imagery?.provider}
         className={`absolute left-3 z-[450] max-w-[70%] rounded-lg bg-black/70 px-3 py-1.5 text-[10px] text-white ${timelineVisible ? "bottom-16" : "bottom-6"}`}
       >
+        {features.some(
+          (feature) => feature.type === "administrative_boundary",
+        ) && (
+          <div
+            className="mb-1 flex items-center gap-2 text-[11px] font-semibold"
+            data-testid="district-legend"
+          >
+            <span
+              aria-hidden="true"
+              className="w-5 border-t-2 border-[#f8df8b]"
+            />
+            GSS district boundaries | 2021 census
+          </div>
+        )}
         {imagery?.label ?? "Loading satellite imagery..."}
         {showLabels &&
           (labelsFailed
             ? " | Some place labels unavailable"
             : " | Esri place labels")}
-        {features.some(
-          (feature) => feature.type === "administrative_boundary",
-        ) && " | Districts: GSS 2021 census"}
         {imagery?.state === "unavailable" && (
           <button
             type="button"

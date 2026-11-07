@@ -180,12 +180,23 @@ export function GoogleIntelligenceMap({
         data-provider="google"
         className={`absolute left-3 z-[450] max-w-[70%] rounded-lg bg-black/70 px-3 py-1.5 text-[10px] text-white ${timelineVisible ? "bottom-16" : "bottom-10"}`}
       >
+        {features.some(
+          (feature) => feature.type === "administrative_boundary",
+        ) && (
+          <div
+            className="mb-1 flex items-center gap-2 text-[11px] font-semibold"
+            data-testid="district-legend"
+          >
+            <span
+              aria-hidden="true"
+              className="w-5 border-t-2 border-[#f8df8b]"
+            />
+            GSS district boundaries | 2021 census
+          </div>
+        )}
         {ready
           ? `Google ${showLabels ? "Hybrid" : "Satellite"} | imagery dates vary`
           : "Loading Google satellite imagery..."}
-        {features.some(
-          (feature) => feature.type === "administrative_boundary",
-        ) && " | Districts: GSS 2021 census"}
       </div>
     </div>
   );

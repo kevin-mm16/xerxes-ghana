@@ -10,13 +10,13 @@ import { MapLayerControl } from "./MapLayerControl";
 import { TimelineControl } from "./TimelineControl";
 
 const defaultFilters: MapFilterState = { search: "", dateRange: "All" };
-// Place labels are part of the photographic base. Data overlays remain opt-in.
+// Show reference districts immediately; monitoring and analysis remain opt-in.
 const defaultLayers: MapLayerState = {
   coverage: false,
   observations: false,
   ai: false,
   satellite: false,
-  boundaries: false,
+  boundaries: true,
 };
 
 export function MapExplorer({

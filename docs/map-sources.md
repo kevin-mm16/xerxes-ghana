@@ -52,7 +52,7 @@ Import is one transaction. Previously imported releases are immutable and repeat
 
 The map requests `layers=boundaries` through the existing `/api/v1/map/features` contract. Bbox and feature limits still apply. Public display geometry uses topology-preserving simplification at 0.0003 degrees and six decimal places to reduce transfer size; analytical consumers should use full database geometry. Simplification is per feature and is not a guarantee that adjacent displayed edges remain identical. Every feature retains source URL, dataset version, source date, region, boundary level, and licence note. The newest imported dataset supplies the reference layer; older releases remain in storage. Selecting an outline opens its district name and provenance.
 
-The layer is optional and off by default. Town/road labels are independently enabled by default. Reference districts must never be presented as town perimeters, mining concessions, observation locations, or evidence of illegal activity.
+The district layer and town/road labels are enabled by default so reference geography is visible on first load. The gold-line legend identifies GSS districts. Disable either independently in Layers for an imagery-only view. Reference districts must never be presented as town perimeters, mining concessions, observation locations, or evidence of illegal activity.
 
 ## Local verification
 
