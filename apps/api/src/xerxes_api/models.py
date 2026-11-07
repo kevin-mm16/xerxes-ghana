@@ -1,13 +1,62 @@
 """Private storage models. Public representations are constructed separately."""
 
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID, uuid4
 
 from geoalchemy2 import Geometry
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from xerxes_api.db import Base
+
+
+class BoundaryDataset(Base):
+    __tablename__ = "boundary_datasets"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    version: Mapped[str] = mapped_column(String(100), unique=True)
+    source_name: Mapped[str] = mapped_column(String(160))
+    source_url: Mapped[str] = mapped_column(Text)
+    download_url: Mapped[str] = mapped_column(Text)
+    source_date: Mapped[date] = mapped_column(Date)
+    census_year: Mapped[int] = mapped_column(Integer)
+    archive_sha256: Mapped[str] = mapped_column(String(64))
+    license_note: Mapped[str] = mapped_column(Text)
+    imported_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class AdministrativeBoundary(Base):
+    __tablename__ = "administrative_boundaries"
+    __table_args__ = (
+        UniqueConstraint("dataset_id", "source_code"),
+        Index("ix_administrative_geometry", "geometry", postgresql_using="gist"),
+        Index("ix_administrative_dataset", "dataset_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    dataset_id: Mapped[UUID] = mapped_column(ForeignKey("boundary_datasets.id", ondelete="CASCADE"))
+    source_code: Mapped[str] = mapped_column(String(180))
+    name: Mapped[str] = mapped_column(String(160))
+    region: Mapped[str] = mapped_column(String(160))
+    level: Mapped[str] = mapped_column(String(32))
+    geometry = mapped_column(
+        Geometry("MULTIPOLYGON", srid=4326, spatial_index=False), nullable=False
+    )
+    geometry_repaired: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class CoverageRegion(Base):

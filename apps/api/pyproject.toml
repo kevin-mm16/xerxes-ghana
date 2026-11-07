@@ -15,6 +15,7 @@ dependencies = [
   "GeoAlchemy2>=0.17,<1",
   "alembic>=1.14,<2",
   "python-dotenv>=1,<2",
+  "pyshp>=2.3,<3",
 ]
 
 [project.optional-dependencies]

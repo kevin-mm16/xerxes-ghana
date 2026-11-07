@@ -11,7 +11,8 @@ load_dotenv(ROOT / ".env")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("task", choices=["serve", "migrate", "seed", "test"])
+    parser.add_argument("task", choices=["serve", "migrate", "seed", "test", "import-boundaries"])
+    parser.add_argument("--archive", type=Path)
     args = parser.parse_args()
     if args.task == "serve":
         import uvicorn
@@ -29,6 +30,12 @@ if __name__ == "__main__":
 
         seed_demo()
         print("Development coverage seed complete.")
+    elif args.task == "import-boundaries":
+        from xerxes_api.import_boundaries import import_gss_archive
+
+        if not args.archive:
+            parser.error("import-boundaries requires --archive PATH to the GSS geofiles.zip")
+        print(import_gss_archive(args.archive))
     else:
         import pytest
 

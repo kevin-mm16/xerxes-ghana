@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import AwareDatetime
 from sqlalchemy import text
 
+from xerxes_api.boundaries import boundary_features
 from xerxes_api.coverage import coverage_features
 from xerxes_api.db import SessionDep
 from xerxes_api.observations import PUBLIC_SELECT
@@ -31,13 +32,15 @@ def map_features(
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from None
     requested = set(layers.split(","))
-    if not requested or requested - {"coverage", "observations", "ai", "satellite"}:
+    if not requested or requested - {"coverage", "observations", "ai", "satellite", "boundaries"}:
         raise HTTPException(422, "Unknown map layer")
     if from_ and to and from_ > to:
         raise HTTPException(422, "from must be before to")
     features = (
         coverage_features(session, bbox=bounds, limit=limit + 1) if "coverage" in requested else []
     )
+    if "boundaries" in requested:
+        features.extend(boundary_features(session, bbox=bounds, limit=limit + 1))
     if "observations" in requested and not confidence_min:
         params = {"limit": limit + 1}
         clauses = []

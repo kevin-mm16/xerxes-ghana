@@ -38,6 +38,7 @@ def health() -> dict[str, str]:
 def ready():
     with get_engine().connect() as connection:
         connection.execute(text("SELECT 1 FROM coverage_regions LIMIT 1"))
+        connection.execute(text("SELECT 1 FROM administrative_boundaries LIMIT 1"))
         connection.execute(text("SELECT PostGIS_Version()"))
     return {"status": "ready"}
 

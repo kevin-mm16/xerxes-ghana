@@ -89,13 +89,14 @@ class PublicObservation(ApiModel):
 
 class FeatureProperties(ApiModel):
     feature_type: Literal[
+        "administrative_boundary",
         "coverage_region",
         "citizen_observation",
         "approved_video",
         "ai_candidate",
         "satellite_change",
     ]
-    layer: Literal["coverage", "observations", "ai", "satellite"]
+    layer: Literal["coverage", "observations", "ai", "satellite", "boundaries"]
     title: str
     source: str
     summary: str | None = None
@@ -112,6 +113,12 @@ class FeatureProperties(ApiModel):
     confidence: float | None = Field(default=None, ge=0, le=1)
     source_imagery: list[str] | None = None
     review_state: str | None = None
+    source_url: str | None = None
+    dataset_version: str | None = None
+    boundary_level: str | None = None
+    license_note: str | None = None
+    region: str | None = None
+    source_date: str | None = None
 
 
 class GeoFeature(ApiModel):
