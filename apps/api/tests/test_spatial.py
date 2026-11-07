@@ -186,5 +186,24 @@ def test_migration_roundtrip(db_engine, migration_config, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", str(db_engine.url.render_as_string(hide_password=False)))
     command.downgrade(migration_config, "base")
     command.upgrade(migration_config, "head")
+    command.check(migration_config)
     with db_engine.connect() as connection:
         assert connection.execute(text("SELECT count(*) FROM coverage_regions")).scalar() == 0
+
+
+def test_demo_seed_is_explicit_and_idempotent(db_engine, monkeypatch):
+    from xerxes_api.seed import seed_demo
+
+    monkeypatch.setenv("APP_ENV", "production")
+    with pytest.raises(RuntimeError):
+        seed_demo()
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setattr("xerxes_api.seed.get_engine", lambda: db_engine)
+    seed_demo()
+    seed_demo()
+    with db_engine.begin() as connection:
+        assert (
+            connection.execute(text("SELECT count(*) FROM coverage_regions WHERE is_demo")).scalar()
+            == 3
+        )
+        connection.execute(text("DELETE FROM coverage_regions"))

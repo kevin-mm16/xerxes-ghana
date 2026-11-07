@@ -4,7 +4,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from geoalchemy2 import Geometry
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from xerxes_api.db import Base
@@ -12,6 +12,10 @@ from xerxes_api.db import Base
 
 class CoverageRegion(Base):
     __tablename__ = "coverage_regions"
+    __table_args__ = (
+        Index("ix_coverage_geometry", "geometry", postgresql_using="gist"),
+        Index("ix_coverage_validity", "status", "valid_from", "valid_to"),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     code: Mapped[str] = mapped_column(String(40), unique=True)
@@ -31,6 +35,10 @@ class CoverageRegion(Base):
 
 class Observation(Base):
     __tablename__ = "observations"
+    __table_args__ = (
+        Index("ix_observations_public", "status", "observed_at"),
+        Index("ix_observations_coverage", "coverage_region_id"),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     coverage_region_id: Mapped[UUID | None] = mapped_column(ForeignKey("coverage_regions.id"))
@@ -52,7 +60,9 @@ class Observation(Base):
 class CaptureLocation(Base):
     __tablename__ = "capture_locations"
 
-    observation_id: Mapped[UUID] = mapped_column(ForeignKey("observations.id"), primary_key=True)
+    observation_id: Mapped[UUID] = mapped_column(
+        ForeignKey("observations.id", ondelete="CASCADE"), primary_key=True
+    )
     geometry = mapped_column(Geometry("POINT", srid=4326, spatial_index=False), nullable=False)
     accuracy_meters: Mapped[float] = mapped_column(Float)
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -64,7 +74,9 @@ class ObservationLocation(Base):
 
     __tablename__ = "observation_locations"
 
-    observation_id: Mapped[UUID] = mapped_column(ForeignKey("observations.id"), primary_key=True)
+    observation_id: Mapped[UUID] = mapped_column(
+        ForeignKey("observations.id", ondelete="CASCADE"), primary_key=True
+    )
     geometry = mapped_column(Geometry("GEOMETRY", srid=4326, spatial_index=False), nullable=False)
     reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     source: Mapped[str] = mapped_column(String(80))
@@ -74,8 +86,11 @@ class PublicLocation(Base):
     """A publication record containing independently sanitized text and generalized geometry."""
 
     __tablename__ = "public_locations"
+    __table_args__ = (Index("ix_public_geometry", "geometry", postgresql_using="gist"),)
 
-    observation_id: Mapped[UUID] = mapped_column(ForeignKey("observations.id"), primary_key=True)
+    observation_id: Mapped[UUID] = mapped_column(
+        ForeignKey("observations.id", ondelete="CASCADE"), primary_key=True
+    )
     geometry = mapped_column(Geometry("GEOMETRY", srid=4326, spatial_index=False), nullable=False)
     label: Mapped[str] = mapped_column(String(160))
     precision_level: Mapped[str] = mapped_column(String(32))

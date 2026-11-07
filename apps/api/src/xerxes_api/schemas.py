@@ -20,9 +20,9 @@ class ApiModel(BaseModel):
 
 
 class CaptureInput(ApiModel):
-    latitude: float = Field(ge=-90, le=90)
-    longitude: float = Field(ge=-180, le=180)
-    accuracy_meters: float = Field(ge=0, le=10000)
+    latitude: float = Field(ge=-90, le=90, strict=True)
+    longitude: float = Field(ge=-180, le=180, strict=True)
+    accuracy_meters: float = Field(ge=0, le=10000, strict=True)
     captured_at: AwareDatetime
     source: Literal["browser-geolocation", "manual", "drone"] = "browser-geolocation"
 

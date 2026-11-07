@@ -32,3 +32,17 @@ def test_bbox_validation():
     for value in ["1,2,3", "-181,0,1,2", "0,2,1,1", "nan,0,1,2"]:
         with pytest.raises(ValueError):
             parse_bbox(value)
+
+
+def test_boolean_coordinates_are_not_accepted_as_numbers():
+    with pytest.raises(ValidationError):
+        CaptureInput(latitude=True, longitude=0, accuracy_meters=10, captured_at=datetime.now(UTC))
+
+
+def test_special_character_database_password(monkeypatch):
+    from xerxes_api.db import database_url
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("POSTGRES_PASSWORD", "local-test:p@ss/word%")
+    url = database_url()
+    assert url.password == "local-test:p@ss/word%"
