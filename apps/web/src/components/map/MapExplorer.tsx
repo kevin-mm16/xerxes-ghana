@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { MediaType, Report, ReportStatus, SeverityLevel } from "@/types";
-import type { IntelligenceFeature, MapLayerKey, MapLayerState } from "@/types/intelligence";
+import type {
+  BaseMapKey,
+  IntelligenceFeature,
+  MapLayerKey,
+  MapLayerState,
+} from "@/types/intelligence";
 import { HotspotMap } from "@/components/map/BrowserMaps";
 import { IntelligenceDrawer } from "@/components/map/IntelligenceDrawer";
 import { MapFilters, type MapFilterState } from "@/components/map/MapFilters";
@@ -54,6 +59,7 @@ export function MapExplorer({ variant = "workspace" }: MapExplorerProps) {
   const allFeatures = useMemo(() => getMapFeatures(), []);
   const [filters, setFilters] = useState<MapFilterState>(defaultFilters);
   const [layers, setLayers] = useState<MapLayerState>(defaultLayers);
+  const [baseMap, setBaseMap] = useState<BaseMapKey>("satellite");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string>();
   const [selectedYear, setSelectedYear] = useState(2026);
@@ -145,11 +151,12 @@ export function MapExplorer({ variant = "workspace" }: MapExplorerProps) {
     <div
       className={
         compact
-          ? "relative overflow-hidden rounded-3xl border border-line bg-[#dbe7df] shadow-card"
-          : "relative h-[calc(100vh-112px)] min-h-[700px] overflow-hidden bg-[#dbe7df]"
+          ? "relative overflow-hidden rounded-3xl border border-line bg-[#17251d] shadow-card"
+          : "relative h-[calc(100vh-112px)] min-h-[700px] overflow-hidden bg-[#17251d]"
       }
     >
       <HotspotMap
+        baseMap={baseMap}
         features={visibleFeatures}
         selectedFeatureId={selectedFeatureId}
         onSelectFeature={(feature) => setSelectedFeatureId(feature.id)}
@@ -184,11 +191,17 @@ export function MapExplorer({ variant = "workspace" }: MapExplorerProps) {
       ) : null}
 
       <div className="absolute right-4 top-4 z-[600] hidden sm:block">
-        <MapLayerControl layers={layers} onChange={setLayers} counts={layerCounts} />
+        <MapLayerControl
+          baseMap={baseMap}
+          onBaseMapChange={setBaseMap}
+          layers={layers}
+          onChange={setLayers}
+          counts={layerCounts}
+        />
       </div>
 
       {!compact ? (
-        <div className="absolute bottom-4 left-4 right-4 z-[600] lg:right-[392px]">
+        <div className="absolute bottom-4 left-4 right-4 z-[600] lg:right-[408px]">
           <TimelineControl years={years} selectedYear={selectedYear} onSelect={setSelectedYear} />
         </div>
       ) : null}

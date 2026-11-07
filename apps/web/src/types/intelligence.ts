@@ -1,6 +1,7 @@
 import type { MediaType, ReportStatus, SeverityLevel } from "@/types";
 
 export type MapLayerKey = "coverage" | "observations" | "ai" | "satellite";
+export type BaseMapKey = "satellite" | "vegetation" | "streets";
 
 export type IntelligenceFeatureType =
   | "coverage_region"

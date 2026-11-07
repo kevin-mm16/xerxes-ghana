@@ -1,6 +1,16 @@
 # Map-first frontend foundation
 
-The public product is now organized around the Ghana intelligence map rather than a content-heavy website.
+The public product is organized around the Ghana intelligence map rather than a content-heavy website.
+
+## Real Earth-observation basemap
+
+The default environmental view now uses Digital Earth Africa's public OGC Web Map Service instead of OpenStreetMap.
+
+- **Satellite**: Sentinel-2 semiannual GeoMAD (`gm_s2_semiannual`) for cloud-reduced, real multispectral imagery.
+- **Vegetation**: Digital Earth Africa NDVI Anomaly (`ndvi_anomaly`) for real vegetation-condition context.
+- **Streets**: OpenStreetMap remains an optional reference view.
+
+This is still a frontend integration, not the final XERSXES raster architecture. Production time-linked imagery should eventually be served through our own scene catalog / tile pipeline so the selected date and model outputs are reproducible.
 
 ## Core interface contract
 
@@ -24,7 +34,7 @@ Three concepts must remain separate:
 
 Public UI must never derive its location directly from private capture coordinates.
 
-## Layers
+## Intelligence layers
 
 - Coverage regions
 - Public observations / approved videos
@@ -35,4 +45,4 @@ AI candidates are review signals only and must not be presented as confirmed ill
 
 ## Mapping engine
 
-Leaflet remains the current map renderer to avoid unnecessary churn. The data contract is designed so a later migration to MapLibre does not require changing backend intelligence models.
+Leaflet remains the renderer for the MVP. The data contract and Earth-observation source boundary are intentionally separate so a later migration to MapLibre or our own tile service does not require changing backend intelligence models.

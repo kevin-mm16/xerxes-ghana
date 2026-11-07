@@ -1,11 +1,12 @@
 "use client";
 
-import { CircleMarker, MapContainer, Polygon, TileLayer, Tooltip } from "react-leaflet";
+import { CircleMarker, MapContainer, Polygon, TileLayer, Tooltip, WMSTileLayer } from "react-leaflet";
 import type { LatLngBoundsExpression, LatLngExpression } from "leaflet";
-import type { IntelligenceFeature } from "@/types/intelligence";
+import type { BaseMapKey, IntelligenceFeature } from "@/types/intelligence";
 import { severityPinColors } from "@/utils/badges";
 
 interface HotspotMapProps {
+  baseMap: BaseMapKey;
   features: IntelligenceFeature[];
   selectedFeatureId?: string;
   onSelectFeature: (feature: IntelligenceFeature) => void;
@@ -17,6 +18,8 @@ const ghanaBounds: LatLngBoundsExpression = [
   [4.35, -3.45],
   [11.25, 1.4],
 ];
+
+const deAfricaWms = "https://ows.digitalearth.africa/wms";
 
 function polygonPositions(feature: IntelligenceFeature): LatLngExpression[][] {
   if (feature.geometry.type !== "Polygon") return [];
@@ -32,7 +35,48 @@ function pointPosition(feature: IntelligenceFeature): LatLngExpression | null {
   return [lat, lng];
 }
 
-export function HotspotMap({ features, selectedFeatureId, onSelectFeature, compact = false }: HotspotMapProps) {
+function EarthBaseLayer({ baseMap }: { baseMap: BaseMapKey }) {
+  if (baseMap === "streets") {
+    return (
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+    );
+  }
+
+  if (baseMap === "vegetation") {
+    return (
+      <WMSTileLayer
+        key="vegetation"
+        url={deAfricaWms}
+        layers="ndvi_anomaly"
+        format="image/png"
+        transparent={false}
+        attribution="Digital Earth Africa"
+      />
+    );
+  }
+
+  return (
+    <WMSTileLayer
+      key="satellite"
+      url={deAfricaWms}
+      layers="gm_s2_semiannual"
+      format="image/png"
+      transparent={false}
+      attribution="Digital Earth Africa · Copernicus Sentinel-2"
+    />
+  );
+}
+
+export function HotspotMap({
+  baseMap,
+  features,
+  selectedFeatureId,
+  onSelectFeature,
+  compact = false,
+}: HotspotMapProps) {
   return (
     <div className={compact ? "relative h-[520px] overflow-hidden rounded-3xl" : "relative h-full min-h-[640px] overflow-hidden"}>
       <MapContainer
@@ -45,10 +89,7 @@ export function HotspotMap({ features, selectedFeatureId, onSelectFeature, compa
         scrollWheelZoom
         className="z-0 h-full min-h-[520px] w-full"
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <EarthBaseLayer baseMap={baseMap} />
 
         {features.map((feature) => {
           const selected = feature.id === selectedFeatureId;
@@ -60,10 +101,10 @@ export function HotspotMap({ features, selectedFeatureId, onSelectFeature, compa
                 key={feature.id}
                 positions={polygonPositions(feature)}
                 pathOptions={{
-                  color: isCoverage ? "#147a4b" : "#d98a24",
+                  color: isCoverage ? "#00d084" : "#f59e0b",
                   weight: selected ? 4 : 2,
-                  fillColor: isCoverage ? "#3ca66d" : "#f2b84b",
-                  fillOpacity: isCoverage ? 0.12 : 0.18,
+                  fillColor: isCoverage ? "#10b981" : "#f59e0b",
+                  fillOpacity: isCoverage ? 0.08 : 0.16,
                   dashArray: isCoverage ? undefined : "7 7",
                 }}
                 eventHandlers={{ click: () => onSelectFeature(feature) }}
@@ -106,8 +147,12 @@ export function HotspotMap({ features, selectedFeatureId, onSelectFeature, compa
         })}
       </MapContainer>
 
-      <div className="pointer-events-none absolute bottom-2 left-2 z-[450] rounded-lg bg-white/90 px-2 py-1 text-[10px] text-muted shadow-sm">
-        Public locations are generalized. Demo layers use synthetic data.
+      <div className="pointer-events-none absolute bottom-2 left-2 z-[450] rounded-lg bg-black/70 px-2.5 py-1.5 text-[10px] text-white shadow-sm backdrop-blur">
+        {baseMap === "satellite"
+          ? "Real Sentinel-2 cloud-reduced imagery · Digital Earth Africa"
+          : baseMap === "vegetation"
+            ? "Real NDVI vegetation-condition layer · Digital Earth Africa"
+            : "Reference street map · OpenStreetMap"}
       </div>
     </div>
   );
