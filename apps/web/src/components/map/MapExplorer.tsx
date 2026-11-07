@@ -1,139 +1,202 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { MediaType, Report, ReportStatus, SeverityLevel } from "@/types";
-import { FilterChip } from "@/components/ui/FilterChip";
+import type { IntelligenceFeature, MapLayerKey, MapLayerState } from "@/types/intelligence";
 import { HotspotMap } from "@/components/map/BrowserMaps";
-import { HotspotCard } from "@/components/map/HotspotCard";
+import { IntelligenceDrawer } from "@/components/map/IntelligenceDrawer";
 import { MapFilters, type MapFilterState } from "@/components/map/MapFilters";
-import { SafetyNotice } from "@/components/ui/SafetyNotice";
-import { mockHotspots } from "@/data/mockHotspots";
-import { mockReports } from "@/data/mockReports";
+import { MapLayerControl } from "@/components/map/MapLayerControl";
+import { TimelineControl } from "@/components/map/TimelineControl";
+import { getMapFeatures, getMapReports } from "@/services/map-data";
+
+interface MapExplorerProps {
+  variant?: "workspace" | "preview";
+}
 
 const defaultFilters: MapFilterState = {
   region: "All",
   search: "",
   severity: "All",
   status: "All",
-  dateRange: "Last 30 days",
+  dateRange: "All",
   verifiedOnly: false,
   mediaType: "All",
+};
+
+const defaultLayers: MapLayerState = {
+  coverage: true,
+  observations: true,
+  ai: false,
+  satellite: false,
 };
 
 const referenceDate = new Date("2026-07-09T00:00:00Z");
 
 function withinDateRange(report: Report, range: MapFilterState["dateRange"]) {
   if (range === "All") return true;
-
   const days = range === "Last 7 days" ? 7 : range === "Last 30 days" ? 30 : 90;
   const submitted = new Date(`${report.dateSubmitted}T00:00:00Z`);
   const diff = referenceDate.getTime() - submitted.getTime();
-  return diff <= days * 24 * 60 * 60 * 1000;
+  return diff >= 0 && diff <= days * 24 * 60 * 60 * 1000;
 }
 
 function matchesFilter<T extends string>(value: T, filter: T | "All") {
   return filter === "All" || value === filter;
 }
 
-export function MapExplorer() {
-  const [filters, setFilters] = useState<MapFilterState>(defaultFilters);
+function featureYear(feature: IntelligenceFeature) {
+  return feature.observedAt ? Number(feature.observedAt.slice(0, 4)) : null;
+}
 
-  const filteredReports = useMemo(() => {
+export function MapExplorer({ variant = "workspace" }: MapExplorerProps) {
+  const reports = useMemo(() => getMapReports(), []);
+  const allFeatures = useMemo(() => getMapFeatures(), []);
+  const [filters, setFilters] = useState<MapFilterState>(defaultFilters);
+  const [layers, setLayers] = useState<MapLayerState>(defaultLayers);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string>();
+  const [selectedYear, setSelectedYear] = useState(2026);
+
+  const filteredReportIds = useMemo(() => {
+    const search = filters.search.trim().toLowerCase();
+    return new Set(
+      reports
+        .filter((report) => {
+          const matchesSearch =
+            !search ||
+            report.district.toLowerCase().includes(search) ||
+            report.approximateLocationLabel.toLowerCase().includes(search) ||
+            report.title.toLowerCase().includes(search);
+
+          return (
+            matchesFilter(report.region, filters.region) &&
+            matchesFilter<SeverityLevel>(report.severity, filters.severity) &&
+            matchesFilter<ReportStatus>(report.status, filters.status) &&
+            matchesFilter<MediaType>(report.mediaType, filters.mediaType) &&
+            matchesSearch &&
+            withinDateRange(report, filters.dateRange) &&
+            (!filters.verifiedOnly || report.status === "Verified")
+          );
+        })
+        .map((report) => report.id),
+    );
+  }, [filters, reports]);
+
+  const visibleFeatures = useMemo(() => {
     const search = filters.search.trim().toLowerCase();
 
-    return mockReports.filter((report) => {
-      const matchesSearch =
-        !search ||
-        report.district.toLowerCase().includes(search) ||
-        report.approximateLocationLabel.toLowerCase().includes(search) ||
-        report.title.toLowerCase().includes(search);
+    return allFeatures.filter((feature) => {
+      if (!layers[feature.properties.layer]) return false;
 
-      return (
-        matchesFilter(report.region, filters.region) &&
-        matchesFilter<SeverityLevel>(report.severity, filters.severity) &&
-        matchesFilter<ReportStatus>(report.status, filters.status) &&
-        matchesFilter<MediaType>(report.mediaType, filters.mediaType) &&
-        matchesSearch &&
-        withinDateRange(report, filters.dateRange) &&
-        (!filters.verifiedOnly || report.status === "Verified")
-      );
+      if (feature.type !== "coverage_region" && featureYear(feature) !== selectedYear) return false;
+
+      if (filters.region !== "All" && feature.properties.region && feature.properties.region !== filters.region) {
+        return false;
+      }
+
+      if (feature.properties.reportId && !filteredReportIds.has(feature.properties.reportId)) return false;
+
+      if (!feature.properties.reportId && search) {
+        const haystack = [
+          feature.properties.title,
+          feature.properties.region,
+          feature.properties.district,
+          feature.properties.summary,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(search)) return false;
+      }
+
+      return true;
     });
-  }, [filters]);
+  }, [allFeatures, filteredReportIds, filters.region, filters.search, layers, selectedYear]);
 
-  const filteredReportIds = new Set(filteredReports.map((report) => report.id));
-  const filteredHotspots = mockHotspots.filter((hotspot) => filteredReportIds.has(hotspot.reportId));
-  const summary = [
-    { label: "Visible pins", value: String(filteredHotspots.length) },
-    { label: "Critical", value: String(filteredReports.filter((report) => report.severity === "Critical").length) },
-    { label: "Verified", value: String(filteredReports.filter((report) => report.status === "Verified").length) },
-    { label: "Escalated", value: String(filteredReports.filter((report) => report.status === "Escalated").length) },
-  ];
+  const selectedFeature = allFeatures.find((feature) => feature.id === selectedFeatureId);
 
-  const clearFilter = (key: keyof MapFilterState) => {
-    setFilters((current) => ({ ...current, [key]: defaultFilters[key] }));
-  };
+  useEffect(() => {
+    if (selectedFeature && !visibleFeatures.some((feature) => feature.id === selectedFeature.id)) {
+      setSelectedFeatureId(undefined);
+    }
+  }, [selectedFeature, visibleFeatures]);
 
-  const activeFilters = [
-    filters.region !== "All" ? { key: "region" as const, label: "Region", value: filters.region } : null,
-    filters.search ? { key: "search" as const, label: "Search", value: filters.search } : null,
-    filters.severity !== "All" ? { key: "severity" as const, label: "Severity", value: filters.severity } : null,
-    filters.status !== "All" ? { key: "status" as const, label: "Status", value: filters.status } : null,
-    filters.dateRange !== "All" ? { key: "dateRange" as const, label: "Date", value: filters.dateRange } : null,
-    filters.mediaType !== "All" ? { key: "mediaType" as const, label: "Media", value: filters.mediaType } : null,
-    filters.verifiedOnly ? { key: "verifiedOnly" as const, label: "Verified only", value: "" } : null,
-  ].filter(Boolean) as Array<{ key: keyof MapFilterState; label: string; value: string }>;
+  const layerCounts = useMemo(() => {
+    const counts: Record<MapLayerKey, number> = { coverage: 0, observations: 0, ai: 0, satellite: 0 };
+    allFeatures.forEach((feature) => {
+      counts[feature.properties.layer] += 1;
+    });
+    return counts;
+  }, [allFeatures]);
+
+  const years = useMemo(() => {
+    const discovered = allFeatures
+      .map(featureYear)
+      .filter((year): year is number => year !== null);
+    return Array.from(new Set(discovered)).sort((a, b) => a - b);
+  }, [allFeatures]);
+
+  const observationCount = visibleFeatures.filter((feature) => feature.properties.layer === "observations").length;
+  const aiCount = visibleFeatures.filter((feature) => feature.properties.layer === "ai").length;
+  const compact = variant === "preview";
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-      <MapFilters filters={filters} onChange={setFilters} onReset={() => setFilters(defaultFilters)} />
+    <div
+      className={
+        compact
+          ? "relative overflow-hidden rounded-3xl border border-line bg-[#dbe7df] shadow-card"
+          : "relative h-[calc(100vh-112px)] min-h-[700px] overflow-hidden bg-[#dbe7df]"
+      }
+    >
+      <HotspotMap
+        features={visibleFeatures}
+        selectedFeatureId={selectedFeatureId}
+        onSelectFeature={(feature) => setSelectedFeatureId(feature.id)}
+        compact={compact}
+      />
 
-      <div className="space-y-6">
-        <SafetyNotice title="Public location privacy" tone="privacy">
-          Public map pins are generalized. Exact coordinates and raw evidence are private moderator-only data in this
-          frontend stage.
-        </SafetyNotice>
+      <div className="pointer-events-none absolute left-4 top-4 z-[600] flex items-start gap-2">
+        {!compact ? (
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((current) => !current)}
+            className="pointer-events-auto rounded-xl border border-white/70 bg-white/95 px-4 py-2.5 text-sm font-bold text-forest-800 shadow-lift backdrop-blur"
+          >
+            {filtersOpen ? "Close filters" : "Filters"}
+          </button>
+        ) : null}
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
-            {activeFilters.length > 0 ? (
-              activeFilters.map((filter) => (
-                <FilterChip
-                  key={filter.key}
-                  label={filter.label}
-                  value={filter.value}
-                  onRemove={() => clearFilter(filter.key)}
-                />
-              ))
-            ) : (
-              <span className="text-sm text-muted">No active filters</span>
-            )}
-          </div>
-          <p className="text-sm text-muted">
-            Showing <strong className="text-ink">{filteredReports.length}</strong> report previews
-          </p>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {summary.map((item) => (
-            <div key={item.label} className="rounded-2xl border border-line bg-white px-4 py-3 shadow-card">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-faint">{item.label}</p>
-              <p className="mt-2 font-serif text-3xl font-semibold leading-none text-forest-800">{item.value}</p>
-            </div>
-          ))}
-        </div>
-
-        <HotspotMap hotspots={filteredHotspots} reports={filteredReports} />
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filteredReports.length > 0 ? (
-            filteredReports.map((report) => <HotspotCard key={report.id} report={report} />)
-          ) : (
-            <div className="rounded-2xl border border-dashed border-line bg-white p-8 text-center text-muted md:col-span-2 xl:col-span-3">
-              No public report previews match these filters.
-            </div>
-          )}
+        <div className="rounded-xl border border-white/70 bg-white/95 px-3 py-2 shadow-lift backdrop-blur">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-faint">Visible</p>
+          <p className="text-sm font-bold text-ink">{observationCount} observations · {aiCount} AI</p>
         </div>
       </div>
+
+      {!compact && filtersOpen ? (
+        <div className="absolute left-4 top-16 z-[640] w-[min(320px,calc(100%-2rem))]">
+          <MapFilters
+            filters={filters}
+            onChange={setFilters}
+            onReset={() => setFilters(defaultFilters)}
+          />
+        </div>
+      ) : null}
+
+      <div className="absolute right-4 top-4 z-[600] hidden sm:block">
+        <MapLayerControl layers={layers} onChange={setLayers} counts={layerCounts} />
+      </div>
+
+      {!compact ? (
+        <div className="absolute bottom-4 left-4 right-4 z-[600] lg:right-[392px]">
+          <TimelineControl years={years} selectedYear={selectedYear} onSelect={setSelectedYear} />
+        </div>
+      ) : null}
+
+      <IntelligenceDrawer
+        feature={selectedFeature}
+        onClose={() => setSelectedFeatureId(undefined)}
+      />
     </div>
   );
 }

@@ -30,112 +30,89 @@ export function MapFilters({ filters, onChange, onReset }: MapFiltersProps) {
   };
 
   return (
-    <aside className="rounded-2xl border border-line bg-white p-5 shadow-card lg:sticky lg:top-24">
-      <div className="mb-5 flex items-center justify-between gap-4">
-        <h2 className="text-lg font-bold">Filters</h2>
-        <button type="button" onClick={onReset} className="text-sm font-semibold text-forest-800 hover:underline">
+    <aside className="max-h-[70vh] overflow-y-auto rounded-2xl border border-white/70 bg-white/97 p-4 shadow-lift backdrop-blur">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-faint">Explore</p>
+          <h2 className="text-base font-bold">Filters</h2>
+        </div>
+        <button type="button" onClick={onReset} className="text-xs font-bold text-forest-800 hover:underline">
           Reset
         </button>
       </div>
-      <p className="mb-5 text-sm leading-6 text-muted">
-        Filters apply to public report summaries and generalized pins. Private coordinates and raw evidence stay out of
-        this view.
-      </p>
 
-      <div className="space-y-5">
+      <div className="space-y-4">
         <label className="block">
-          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-faint">Region</span>
+          <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-faint">Region</span>
           <select
             value={filters.region}
             onChange={(event) => update("region", event.target.value)}
-            className="h-11 w-full rounded-xl border border-line bg-white px-3 text-sm outline-none focus:border-forest-600"
+            className="h-10 w-full rounded-xl border border-line bg-white px-3 text-sm outline-none focus:border-forest-600"
           >
             <option value="All">All regions</option>
             {ghanaRegions.map((region) => (
-              <option key={region.name} value={region.name}>
-                {region.name}
-              </option>
+              <option key={region.name} value={region.name}>{region.name}</option>
             ))}
           </select>
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-faint">
-            District or town
-          </span>
+          <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-faint">Place</span>
           <input
             value={filters.search}
             onChange={(event) => update("search", event.target.value)}
-            placeholder="Search by district or place"
-            className="h-11 w-full rounded-xl border border-line bg-white px-3 text-sm outline-none focus:border-forest-600"
+            placeholder="District, town or report"
+            className="h-10 w-full rounded-xl border border-line bg-white px-3 text-sm outline-none focus:border-forest-600"
           />
         </label>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+        <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-faint">Severity</span>
+            <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-faint">Severity</span>
             <select
               value={filters.severity}
               onChange={(event) => update("severity", event.target.value as MapFilterState["severity"])}
-              className="h-11 w-full rounded-xl border border-line bg-white px-3 text-sm outline-none focus:border-forest-600"
+              className="h-10 w-full rounded-xl border border-line bg-white px-2 text-sm outline-none focus:border-forest-600"
             >
-              {severities.map((severity) => (
-                <option key={severity} value={severity}>
-                  {severity === "All" ? "All severities" : severity}
-                </option>
-              ))}
+              {severities.map((severity) => <option key={severity}>{severity}</option>)}
             </select>
           </label>
-
           <label className="block">
-            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-faint">Status</span>
+            <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-faint">Status</span>
             <select
               value={filters.status}
               onChange={(event) => update("status", event.target.value as MapFilterState["status"])}
-              className="h-11 w-full rounded-xl border border-line bg-white px-3 text-sm outline-none focus:border-forest-600"
+              className="h-10 w-full rounded-xl border border-line bg-white px-2 text-sm outline-none focus:border-forest-600"
             >
-              {statuses.map((status) => (
-                <option key={status} value={status}>
-                  {status === "All" ? "All statuses" : status}
-                </option>
-              ))}
+              {statuses.map((status) => <option key={status}>{status}</option>)}
             </select>
           </label>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+        <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-faint">Date range</span>
+            <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-faint">Date</span>
             <select
               value={filters.dateRange}
               onChange={(event) => update("dateRange", event.target.value as MapFilterState["dateRange"])}
-              className="h-11 w-full rounded-xl border border-line bg-white px-3 text-sm outline-none focus:border-forest-600"
+              className="h-10 w-full rounded-xl border border-line bg-white px-2 text-sm outline-none focus:border-forest-600"
             >
-              {dateRanges.map((range) => (
-                <option key={range} value={range}>
-                  {range}
-                </option>
-              ))}
+              {dateRanges.map((range) => <option key={range}>{range}</option>)}
             </select>
           </label>
-
           <label className="block">
-            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-faint">Media type</span>
+            <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-faint">Media</span>
             <select
               value={filters.mediaType}
               onChange={(event) => update("mediaType", event.target.value as MapFilterState["mediaType"])}
-              className="h-11 w-full rounded-xl border border-line bg-white px-3 text-sm outline-none focus:border-forest-600"
+              className="h-10 w-full rounded-xl border border-line bg-white px-2 text-sm outline-none focus:border-forest-600"
             >
-              {mediaTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type === "All" ? "All media types" : type}
-                </option>
-              ))}
+              {mediaTypes.map((type) => <option key={type}>{type}</option>)}
             </select>
           </label>
         </div>
 
-        <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-paper px-3 py-3 text-sm font-semibold text-ink">
+        <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-paper px-3 py-2.5 text-sm font-semibold text-ink">
           <input
             type="checkbox"
             checked={filters.verifiedOnly}

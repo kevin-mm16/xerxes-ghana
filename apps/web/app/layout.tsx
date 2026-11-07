@@ -3,8 +3,8 @@ import "leaflet/dist/leaflet.css";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "xersxes | Ghana Galamsey Watch",
-  description: "Environmental monitoring research platform",
+  title: "XERSXES Ghana | Environmental Intelligence",
+  description: "Map-first environmental intelligence and civic evidence platform for Ghana.",
 };
 
 export default function RootLayout({
@@ -12,7 +12,12 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body><div className="bg-amber-50 px-4 py-2 text-center text-sm text-amber-950">xersxes development demo: sample data only. Reports, uploads, and moderator access are simulated.</div>{children}</body>
+      <body>
+        <div className="bg-amber-50 px-4 py-1.5 text-center text-xs font-semibold text-amber-950">
+          Development demo · synthetic data only
+        </div>
+        {children}
+      </body>
     </html>
   );
 }

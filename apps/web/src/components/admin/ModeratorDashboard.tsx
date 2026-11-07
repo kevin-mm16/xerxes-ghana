@@ -42,7 +42,7 @@ export function ModeratorDashboard() {
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-card">
-            <span className="font-bold text-slate-950">Demo moderator:</span> EPA Western desk
+            <span className="font-bold text-slate-950">Demo moderator:</span> XERSXES Western Review Desk
           </div>
         </div>
 

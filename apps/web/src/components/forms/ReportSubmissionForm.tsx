@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import type { Coordinates } from "@/types";
+import type { CapturedLocation } from "@/types";
 import { AnonymousToggle } from "@/components/forms/AnonymousToggle";
 import { LocationPicker } from "@/components/forms/LocationPicker";
 import { UploadBox, type UploadState } from "@/components/forms/UploadBox";
@@ -16,7 +16,7 @@ interface FormState {
   description: string;
   dateObserved: string;
   anonymous: boolean;
-  detectedCoordinates?: Coordinates;
+  detectedCoordinates?: CapturedLocation;
 }
 
 const initialState: FormState = {
@@ -63,7 +63,7 @@ export function ReportSubmissionForm() {
     const nextErrors: string[] = [];
 
     if (!hasLocation) {
-      nextErrors.push("Location is required. Use the location preview, region/district, or a manual location note.");
+      nextErrors.push("Location is required. Use browser location or describe the area manually.");
     }
 
     if (!hasEvidence) {

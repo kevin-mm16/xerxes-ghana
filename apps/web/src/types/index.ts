@@ -14,6 +14,14 @@ export interface Coordinates {
   lng: number;
 }
 
+export type LocationSource = "browser-geolocation" | "manual" | "drone";
+
+export interface CapturedLocation extends Coordinates {
+  accuracyMeters: number;
+  capturedAt: string;
+  source: LocationSource;
+}
+
 export interface Report {
   id: string;
   title: string;
