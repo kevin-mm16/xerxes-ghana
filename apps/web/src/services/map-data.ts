@@ -1,52 +1,47 @@
-import { mockAiFeatures, mockCoverageFeatures, mockSatelliteFeatures } from "@/data/mockIntelligence";
-import { mockReports } from "@/data/mockReports";
-import type { Report } from "@/types";
 import type { IntelligenceFeature } from "@/types/intelligence";
+import type { MapApiFeature, MapFeatureCollection } from "@/types/api";
+import { apiRequest } from "./api";
 
-/**
- * Temporary frontend adapter.
- *
- * Components should consume this service instead of importing mock fixtures
- * directly. The implementation can later switch to /api/v1/map/features
- * without changing the map UI.
- */
-export function getMapReports(): Report[] {
-  return mockReports;
-}
-
-export function getMapFeatures(): IntelligenceFeature[] {
-  const observations: IntelligenceFeature[] = mockReports.map((report) => ({
-    id: `observation-${report.id}`,
-    type: report.mediaType === "Video" ? "approved_video" : "citizen_observation",
-    observedAt: report.dateObserved,
-    geometry: {
-      type: "Point",
-      coordinates: [
-        report.publicCoordinatesApproximate.lng,
-        report.publicCoordinatesApproximate.lat,
-      ],
-    },
+/** The renderer consumes this domain shape, independent of persistence or inference engines. */
+export function adaptMapFeature(feature: MapApiFeature): IntelligenceFeature {
+  const p = feature.properties;
+  return {
+    id: feature.id,
+    type: p.featureType,
+    geometry: feature.geometry,
+    observedAt: p.observedAt,
     properties: {
-      title: report.title,
-      layer: "observations",
-      source: report.verificationSource,
-      region: report.region,
-      district: report.district,
-      summary: report.description,
-      category: report.mediaType === "Video" ? "Approved video observation" : "Public observation",
-      confidence: report.evidenceConfidenceScore,
-      severity: report.severity,
-      status: report.status,
-      mediaType: report.mediaType,
-      reportId: report.id,
-      publicLabel: report.approximateLocationLabel,
+      title: p.title,
+      layer: p.layer,
+      source: p.source,
+      summary: p.summary,
+      status: p.status === "approved" ? "Verified" : undefined,
+      coverageCode: p.code,
+      isDemo: p.isDemo,
+      publicLabel: p.publicLabel,
+      observationId: p.observationId,
+      precisionLevel: p.precisionLevel,
+      modelVersion: p.modelVersion,
+      confidence: p.confidence,
+      inferenceTimestamp: p.inferenceTimestamp,
+      sourceImagery: p.sourceImagery,
+      reviewState: p.reviewState,
     },
-  }));
-
-  return [
-    ...mockCoverageFeatures,
-    ...observations,
-    ...mockAiFeatures,
-    ...mockSatelliteFeatures,
-  ];
+  };
+}
+export async function getMapFeatures(signal?: AbortSignal) {
+  const collection = await apiRequest<MapFeatureCollection>(
+    "/map/features?bbox=-3.5,4.3,1.5,11.3&layers=coverage,observations,ai,satellite",
+    { signal },
+  );
+  if (
+    collection.type !== "FeatureCollection" ||
+    !Array.isArray(collection.features)
+  ) {
+    throw new Error("The map service returned an invalid response.");
+  }
+  return {
+    features: collection.features.map(adaptMapFeature),
+    truncated: collection.truncated,
+  };
 }

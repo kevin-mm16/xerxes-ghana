@@ -6,11 +6,17 @@ interface TimelineControlProps {
   onSelect: (year: number) => void;
 }
 
-export function TimelineControl({ years, selectedYear, onSelect }: TimelineControlProps) {
+export function TimelineControl({
+  years,
+  selectedYear,
+  onSelect,
+}: TimelineControlProps) {
   return (
     <div className="rounded-2xl border border-white/70 bg-white/95 px-4 py-3 shadow-lift backdrop-blur">
       <div className="flex items-center gap-3">
-        <span className="hidden text-[11px] font-bold uppercase tracking-[0.14em] text-faint sm:inline">Time</span>
+        <span className="hidden text-[11px] font-bold uppercase tracking-[0.14em] text-faint sm:inline">
+          Time
+        </span>
         <div className="flex flex-1 items-center gap-1 overflow-x-auto">
           {years.map((year) => (
             <button
@@ -27,7 +33,9 @@ export function TimelineControl({ years, selectedYear, onSelect }: TimelineContr
             </button>
           ))}
         </div>
-        <span className="hidden text-xs text-muted md:inline">Historical layers are demo data until the satellite pipeline is connected.</span>
+        <span className="hidden text-xs text-muted md:inline">
+          Composite dates are shown on the map.
+        </span>
       </div>
     </div>
   );

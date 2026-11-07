@@ -4,7 +4,8 @@ import "@/styles/globals.css";
 
 export const metadata: Metadata = {
   title: "XERSXES Ghana | Environmental Intelligence",
-  description: "Map-first environmental intelligence and civic evidence platform for Ghana.",
+  description:
+    "Map-first environmental intelligence and civic evidence platform for Ghana.",
 };
 
 export default function RootLayout({
@@ -14,7 +15,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div className="bg-amber-50 px-4 py-1.5 text-center text-xs font-semibold text-amber-950">
-          Development demo · synthetic data only
+          Development | demonstration monitoring boundaries
         </div>
         {children}
       </body>

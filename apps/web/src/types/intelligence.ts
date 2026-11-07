@@ -1,7 +1,6 @@
 import type { MediaType, ReportStatus, SeverityLevel } from "@/types";
 
 export type MapLayerKey = "coverage" | "observations" | "ai" | "satellite";
-export type BaseMapKey = "satellite" | "vegetation" | "streets";
 
 export type IntelligenceFeatureType =
   | "coverage_region"
@@ -20,7 +19,15 @@ export interface GeoPolygonGeometry {
   coordinates: Array<Array<[number, number]>>;
 }
 
-export type IntelligenceGeometry = GeoPointGeometry | GeoPolygonGeometry;
+export interface GeoMultiPolygonGeometry {
+  type: "MultiPolygon";
+  coordinates: Array<Array<Array<[number, number]>>>;
+}
+
+export type IntelligenceGeometry =
+  | GeoPointGeometry
+  | GeoPolygonGeometry
+  | GeoMultiPolygonGeometry;
 
 export interface IntelligenceFeatureProperties {
   title: string;
@@ -37,6 +44,13 @@ export interface IntelligenceFeatureProperties {
   reportId?: string;
   publicLabel?: string;
   modelVersion?: string;
+  coverageCode?: string;
+  isDemo?: boolean;
+  observationId?: string;
+  precisionLevel?: string;
+  inferenceTimestamp?: string;
+  sourceImagery?: string[];
+  reviewState?: string;
 }
 
 export interface IntelligenceFeature {

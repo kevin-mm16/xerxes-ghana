@@ -1,158 +1,109 @@
 "use client";
 
-import { CircleMarker, MapContainer, Polygon, TileLayer, Tooltip, WMSTileLayer } from "react-leaflet";
-import type { LatLngBoundsExpression, LatLngExpression } from "leaflet";
-import type { BaseMapKey, IntelligenceFeature } from "@/types/intelligence";
-import { severityPinColors } from "@/utils/badges";
+import { useState } from "react";
+import { CircleMarker, MapContainer, Polygon, Tooltip } from "react-leaflet";
+import type { LatLngExpression, LatLngBoundsExpression } from "leaflet";
+import type { IntelligenceFeature } from "@/types/intelligence";
+import { EarthBaseLayer } from "./EarthBaseLayer";
 
-interface HotspotMapProps {
-  baseMap: BaseMapKey;
+interface Props {
+  imageryYear: number;
   features: IntelligenceFeature[];
   selectedFeatureId?: string;
   onSelectFeature: (feature: IntelligenceFeature) => void;
   compact?: boolean;
 }
-
-const ghanaCenter: LatLngExpression = [7.9465, -1.0232];
-const ghanaBounds: LatLngBoundsExpression = [
-  [4.35, -3.45],
-  [11.25, 1.4],
+function positions(
+  feature: IntelligenceFeature,
+): LatLngExpression[][] | LatLngExpression[][][] {
+  const ring = (points: [number, number][]) =>
+    points.map(([lng, lat]) => [lat, lng] as LatLngExpression);
+  if (feature.geometry.type === "Polygon")
+    return feature.geometry.coordinates.map(ring);
+  if (feature.geometry.type === "MultiPolygon")
+    return feature.geometry.coordinates.map((polygon) => polygon.map(ring));
+  return [];
+}
+const bounds: LatLngBoundsExpression = [
+  [4.1, -3.6],
+  [11.5, 1.6],
 ];
-
-const deAfricaWms = "https://ows.digitalearth.africa/wms";
-
-function polygonPositions(feature: IntelligenceFeature): LatLngExpression[][] {
-  if (feature.geometry.type !== "Polygon") return [];
-
-  return feature.geometry.coordinates.map((ring) =>
-    ring.map(([lng, lat]) => [lat, lng] as LatLngExpression),
-  );
-}
-
-function pointPosition(feature: IntelligenceFeature): LatLngExpression | null {
-  if (feature.geometry.type !== "Point") return null;
-  const [lng, lat] = feature.geometry.coordinates;
-  return [lat, lng];
-}
-
-function EarthBaseLayer({ baseMap }: { baseMap: BaseMapKey }) {
-  if (baseMap === "streets") {
-    return (
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-    );
-  }
-
-  if (baseMap === "vegetation") {
-    return (
-      <WMSTileLayer
-        key="vegetation"
-        url={deAfricaWms}
-        layers="ndvi_anomaly"
-        format="image/png"
-        transparent={false}
-        attribution="Digital Earth Africa"
-      />
-    );
-  }
-
-  return (
-    <WMSTileLayer
-      key="satellite"
-      url={deAfricaWms}
-      layers="gm_s2_semiannual"
-      format="image/png"
-      transparent={false}
-      attribution="Digital Earth Africa · Copernicus Sentinel-2"
-    />
-  );
-}
-
 export function HotspotMap({
-  baseMap,
+  imageryYear,
   features,
   selectedFeatureId,
   onSelectFeature,
   compact = false,
-}: HotspotMapProps) {
+}: Props) {
+  const [sourceLabel, setSourceLabel] = useState("");
   return (
-    <div className={compact ? "relative h-[520px] overflow-hidden rounded-3xl" : "relative h-full min-h-[640px] overflow-hidden"}>
+    <div
+      className={
+        compact
+          ? "relative h-[520px] overflow-hidden rounded-3xl"
+          : "relative h-full overflow-hidden"
+      }
+    >
       <MapContainer
-        center={ghanaCenter}
+        center={[7.9465, -1.0232]}
         zoom={7}
         minZoom={6}
-        maxZoom={14}
-        maxBounds={ghanaBounds}
+        maxZoom={18}
+        maxBounds={bounds}
         maxBoundsViscosity={0.8}
+        zoomControl={false}
         scrollWheelZoom
-        className="z-0 h-full min-h-[520px] w-full"
+        className="z-0 h-full w-full"
       >
-        <EarthBaseLayer baseMap={baseMap} />
-
+        <EarthBaseLayer
+          key={imageryYear}
+          year={imageryYear}
+          onSourceChange={setSourceLabel}
+        />
         {features.map((feature) => {
           const selected = feature.id === selectedFeatureId;
-
-          if (feature.geometry.type === "Polygon") {
-            const isCoverage = feature.type === "coverage_region";
+          const events = { click: () => onSelectFeature(feature) };
+          if (feature.geometry.type !== "Point")
             return (
               <Polygon
                 key={feature.id}
-                positions={polygonPositions(feature)}
+                positions={positions(feature)}
                 pathOptions={{
-                  color: isCoverage ? "#00d084" : "#f59e0b",
+                  color:
+                    feature.type === "coverage_region" ? "#00d084" : "#f59e0b",
                   weight: selected ? 4 : 2,
-                  fillColor: isCoverage ? "#10b981" : "#f59e0b",
-                  fillOpacity: isCoverage ? 0.08 : 0.16,
-                  dashArray: isCoverage ? undefined : "7 7",
+                  fillOpacity: 0.08,
                 }}
-                eventHandlers={{ click: () => onSelectFeature(feature) }}
+                eventHandlers={events}
               >
-                <Tooltip sticky>
-                  <span className="text-xs font-semibold">{feature.properties.title}</span>
-                </Tooltip>
+                <Tooltip sticky>{feature.properties.title}</Tooltip>
               </Polygon>
             );
-          }
-
-          const center = pointPosition(feature);
-          if (!center) return null;
-
-          const isAi = feature.type === "ai_candidate";
-          const fillColor = isAi
-            ? "#7c3aed"
-            : feature.properties.severity
-              ? severityPinColors[feature.properties.severity]
-              : "#17663f";
-
+          const [lng, lat] = feature.geometry.coordinates;
           return (
             <CircleMarker
               key={feature.id}
-              center={center}
-              radius={selected ? 13 : isAi ? 10 : 9}
+              center={[lat, lng]}
+              radius={selected ? 12 : 8}
               pathOptions={{
-                color: "#ffffff",
-                weight: selected ? 4 : 3,
-                fillColor,
+                color: "white",
+                fillColor:
+                  feature.type === "ai_candidate" ? "#7c3aed" : "#17663f",
                 fillOpacity: 0.94,
+                weight: selected ? 4 : 2,
               }}
-              eventHandlers={{ click: () => onSelectFeature(feature) }}
+              eventHandlers={events}
             >
-              <Tooltip direction="top" offset={[0, -6]} opacity={0.95}>
-                <span className="text-xs font-semibold">{feature.properties.title}</span>
-              </Tooltip>
+              <Tooltip>{feature.properties.title}</Tooltip>
             </CircleMarker>
           );
         })}
       </MapContainer>
-
-      <div className="pointer-events-none absolute bottom-2 left-2 z-[450] rounded-lg bg-black/70 px-2.5 py-1.5 text-[10px] text-white shadow-sm backdrop-blur">
-        {baseMap === "satellite"
-          ? "Real Sentinel-2 cloud-reduced imagery · Digital Earth Africa"
-          : baseMap === "vegetation"
-            ? "Real NDVI vegetation-condition layer · Digital Earth Africa"
-            : "Reference street map · OpenStreetMap"}
+      <div
+        role="status"
+        className="pointer-events-none absolute bottom-16 left-3 z-[450] max-w-[calc(100%-1.5rem)] rounded-lg bg-black/70 px-3 py-1.5 text-[10px] text-white sm:bottom-16"
+      >
+        {sourceLabel}
       </div>
     </div>
   );
