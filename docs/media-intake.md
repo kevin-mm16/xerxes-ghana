@@ -1,15 +1,15 @@
 # Private media intake
 
-This milestone accepts one optional image or video per observation, stores its original privately, and prepares a private review copy through a durable worker. It supports controlled local development with synthetic/non-sensitive files. Authenticated moderation, activity-location editing, content redaction, and public media delivery are subsequent milestones.
+The intake pipeline accepts one optional image or video per observation, stores its original privately, and prepares a private review copy through a durable worker. The [moderation/publication workflow](moderation-publication.md) now adds authenticated review, independently reviewed activity locations and distinct public derivatives. Automatic visual/audio redaction remains unimplemented; development should use controlled non-sensitive files.
 
-The existing metadata-only contribution flow remains available. No media becomes public through this intake path, and the development publication helper refuses observations with an attached media record.
+The metadata-only contribution flow remains available. No media becomes public through intake or review processing alone. The old publication CLI is retired; its internal metadata-only compatibility helper still refuses attached media. New publication goes through authenticated review, explicit certification and the separately gated public derivative.
 
 ## Formats and limits
 
-| Input | Maximum size | Additional validation | Private review output |
-| --- | --- | --- | --- |
-| JPEG, PNG, WebP | 10 MiB | Matching extension, MIME declaration, signature, bounded full decoding; animated images are excluded | Fresh JPEG plus JPEG thumbnail |
-| MP4, MOV | 50 MiB | Recognized modern ISO-BMFF container, signature/probe checks, permitted streams/codecs, bounded dimensions, positive duration up to 120 seconds | H.264/AAC MP4 up to 720p/30 fps plus JPEG thumbnail |
+| Input           | Maximum size | Additional validation                                                                                                                           | Private review output                               |
+| --------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| JPEG, PNG, WebP | 10 MiB       | Matching extension, MIME declaration, signature, bounded full decoding; animated images are excluded                                            | Fresh JPEG plus JPEG thumbnail                      |
+| MP4, MOV        | 50 MiB       | Recognized modern ISO-BMFF container, signature/probe checks, permitted streams/codecs, bounded dimensions, positive duration up to 120 seconds | H.264/AAC MP4 up to 720p/30 fps plus JPEG thumbnail |
 
 MOV support is intentionally conservative: legacy MOV files without a recognized container signature are rejected. Browser limits provide early feedback; FastAPI and the worker enforce their own checks. A supported filename or declared MIME type does not establish valid content.
 
@@ -40,12 +40,12 @@ The form does not upload on file selection. It validates location/context and ob
 
 All routes below use the `/api/v1` prefix and `Cache-Control: no-store`.
 
-| Route | Scope | Result |
-| --- | --- | --- |
-| `POST /uploads/intents` | Anonymous intake with consent, validation, and global capacity budgets | One upload ID, a short-lived upload token, canonical same-origin upload URL, expiry, and byte limit |
-| `PUT /uploads/{id}/content` | That upload's unexpired bearer capability | Minimal status after bounded private ingest; accepted uploads cannot be overwritten |
-| `GET /uploads/{id}` | That upload's unexpired bearer capability | Upload ID, processing status, media kind, and an optional safe error code |
-| `POST /observations` | Existing intake contract plus optional `submissionId` and `media: {uploadId, uploadToken}` | Pending observation receipt and optional minimal media status |
+| Route                       | Scope                                                                                      | Result                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `POST /uploads/intents`     | Anonymous intake with consent, validation, and global capacity budgets                     | One upload ID, a short-lived upload token, canonical same-origin upload URL, expiry, and byte limit |
+| `PUT /uploads/{id}/content` | That upload's unexpired bearer capability                                                  | Minimal status after bounded private ingest; accepted uploads cannot be overwritten                 |
+| `GET /uploads/{id}`         | That upload's unexpired bearer capability                                                  | Upload ID, processing status, media kind, and an optional safe error code                           |
+| `POST /observations`        | Existing intake contract plus optional `submissionId` and `media: {uploadId, uploadToken}` | Pending observation receipt and optional minimal media status                                       |
 
 The 43-character random upload capability expires after 30 minutes. Only its SHA-256 hash is stored in PostgreSQL. The browser keeps the token in memory; it is not put in URLs, local storage, or the rendered receipt. The uploads proxy forwards the capability header only, without browser cookies or general moderator credentials. The token has no media-read or moderator authority. Do not log bearer headers or private request bodies.
 

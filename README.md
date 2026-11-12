@@ -12,13 +12,16 @@ Map-first environmental intelligence for Ghana. The workspace shows photographic
 - Persisted private observation metadata and capture locations.
 - Optional private image/video intake, with bounded streaming uploads, SHA-256 integrity records, and durable background processing into private review copies.
 - Public GeoJSON containing reference boundaries, coverage, and independently sanitized approved observations.
+- Authenticated reviewer sessions, private queue/detail/media access, activity-location review and durable audit history.
+- Explicit approval, separately processed public media, publication and withdrawal across map, records and media delivery.
+- Viewport/zoom-aware map requests: no district geometry at national zoom, debounced bbox loading at zoom 9+.
 
-Monitoring boundaries are demonstration geometries, separate from GSS census district geography. Uploaded originals, review copies, and thumbnails stay private. Media-backed observations cannot be published through the existing development helper. Authenticated moderator review, content redaction, public media delivery, AI inference, raster processing, notifications, and production source protection remain unimplemented. The moderator screens are still disconnected demonstrations.
+Monitoring boundaries remain demonstration geometries, separate from GSS census district geography. Originals and review copies stay private. Only a distinct, certified derivative can be served publicly after authenticated publication. Metadata stripping does not redact faces, voices or other visual/audio identifiers; reviewers must inspect and explicitly certify media or exclude it. Automated redaction, AI inference, raster processing, notifications, production object storage and full production source protection remain unimplemented. This is a controlled development MVP, not a production-ready deployment.
 
 ## Structure
 
 - `apps/web`: Next.js App Router, React, Tailwind, Leaflet, typed API adapter, frontend tests.
-- `apps/api`: FastAPI, SQLAlchemy, PostGIS models, Alembic migrations, private media storage/worker, spatial tests, and an explicit development publication helper for metadata-only observations.
+- `apps/api`: FastAPI, SQLAlchemy, PostGIS, Alembic migrations, reviewer sessions, private/public media processing, controlled publication and spatial/privacy tests.
 - `services/geospatial`, `services/ai`: future processing boundaries; see [imagery and AI contracts](docs/imagery-and-ai-contracts.md).
 - `research/xnp`: separate simulation-only node research.
 - `infrastructure`: deployment notes. `docs`: architecture, security, scope, and local operation.
@@ -60,6 +63,14 @@ See [map sources and district import](docs/map-sources.md) for the GSS import co
 See [private media intake](docs/media-intake.md) for supported formats, limits, capability-scoped uploads, processing states, cleanup, and privacy limitations. Native development stores private files in ignored `.local/evidence`; a production S3 adapter is not implemented, and this filesystem provider refuses production use.
 
 See [UI system v2](docs/ui-system-v2.md) for the interface audit, design system, guided contribution flow, map stability changes and validation. The [Ghana focus notes](docs/map-focus.md) distinguish the visual country mask from district geography and coverage eligibility.
+
+See [moderation and publication](docs/moderation-publication.md) for trust boundaries, reviewer setup, geographic generalization, routes, validation and known limits. After migrations, create a **development-only** reviewer from the repository root:
+
+```powershell
+apps/api/.venv/Scripts/python.exe -m xerxes_api.auth_seed --username YOUR_REVIEWER_NAME
+```
+
+The command prompts for a password of at least 12 characters and never supplies a default password. Open [reviewer sign-in](http://localhost:3000/moderator/login). Cookies are HttpOnly and expire after eight hours; production requires Secure cookies and explicit HTTPS browser origins. Never commit credentials or the local credential file. The previous publication CLI is retired; publication uses the authenticated console.
 
 On Linux/macOS use `apps/api/.venv/bin/python` and `npm` instead.
 

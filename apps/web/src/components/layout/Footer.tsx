@@ -21,7 +21,7 @@ export function Footer() {
             Methodology & safety
           </AppLink>
           <AppLink className="hover:text-ink" href="/moderator/login">
-            Operations demo
+            Reviewer sign-in
           </AppLink>
         </div>
       </div>

@@ -50,7 +50,7 @@ export function PublicNavbar() {
         </AppLink>
         <span
           className="application-environment"
-          title="Development prototype. Satellite analysis and authenticated moderation are not operational."
+          title="Development instance. Satellite analysis is not operational; reviewer access requires authentication."
         >
           DEMO
         </span>

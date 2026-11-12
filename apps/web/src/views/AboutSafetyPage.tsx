@@ -127,11 +127,13 @@ export function AboutSafetyPage() {
               eligibility are separate layers.
             </p>
             <p className="mt-4 text-sm leading-8 text-muted">
-              The operations console uses synthetic reports and local decisions.
-              Authenticated moderation, live private-media review, public media
-              publication, AI analysis and authority notifications are not
-              connected. No automated layer should be read as a verified
-              environmental finding.
+              Authorized reviewers can inspect private evidence, establish an
+              activity location and prepare a separate public derivative.
+              Publication requires an approved sanitized summary, generalized
+              geography and an explicit privacy review. Processing strips
+              metadata and normalizes formats; it does not automatically redact
+              faces, voices or other identifiers. AI analysis and authority
+              notifications are not connected.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-4">
               <LinkButton href="/map" variant="secondary">

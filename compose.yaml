@@ -8,6 +8,10 @@ x-api-environment: &api-environment
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Create .env from .env.example}
   EVIDENCE_STORAGE_PROVIDER: filesystem
   EVIDENCE_STORAGE_PATH: /evidence
+  PUBLIC_MEDIA_STORAGE_PROVIDER: filesystem
+  PUBLIC_MEDIA_STORAGE_PATH: /published
+  APP_PUBLIC_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+  PUBLIC_GRID_METERS: "2000"
 
 services:
   db:
@@ -29,7 +33,8 @@ services:
   initialize:
     build: ./apps/api
     environment: *api-environment
-    command: ["sh", "-c", "alembic upgrade head && python -m xerxes_api.seed --demo"]
+    command:
+      ["sh", "-c", "alembic upgrade head && python -m xerxes_api.seed --demo"]
     depends_on:
       db:
         condition: service_healthy
@@ -39,13 +44,20 @@ services:
     environment: *api-environment
     volumes:
       - evidence_data:/evidence
+      - published_data:/published
     depends_on:
       initialize:
         condition: service_completed_successfully
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3)"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3)",
+        ]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -55,6 +67,7 @@ services:
     environment: *api-environment
     volumes:
       - evidence_data:/evidence
+      - published_data:/published
     command: ["python", "-m", "xerxes_api.media_worker"]
     depends_on:
       initialize:
@@ -75,3 +88,4 @@ services:
 volumes:
   pg_data:
   evidence_data:
+  published_data:

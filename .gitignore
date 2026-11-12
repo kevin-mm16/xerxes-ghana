@@ -47,6 +47,7 @@ models/*.pth
 # Local frontend development logs
 vite-dev*.log
 npm-debug.log*
+/debug.log
 
 .vite/
 
