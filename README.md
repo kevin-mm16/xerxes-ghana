@@ -59,6 +59,8 @@ See [map sources and district import](docs/map-sources.md) for the GSS import co
 
 See [private media intake](docs/media-intake.md) for supported formats, limits, capability-scoped uploads, processing states, cleanup, and privacy limitations. Native development stores private files in ignored `.local/evidence`; a production S3 adapter is not implemented, and this filesystem provider refuses production use.
 
+See [UI system v2](docs/ui-system-v2.md) for the interface audit, design system, guided contribution flow, map stability changes and validation. The [Ghana focus notes](docs/map-focus.md) distinguish the visual country mask from district geography and coverage eligibility.
+
 On Linux/macOS use `apps/api/.venv/bin/python` and `npm` instead.
 
 ## Checks
