@@ -1,6 +1,13 @@
 import type { IntelligenceFeature, MapLayerKey } from "@/types/intelligence";
 import type { MapApiFeature, MapFeatureCollection } from "@/types/api";
 import { apiRequest } from "./api";
+import type { MapBbox } from "@/utils/map-view";
+import { safePublicMedia } from "@/utils/public-media";
+
+export interface MapFeatureQuery {
+  bbox?: MapBbox;
+  layers: MapLayerKey[];
+}
 
 /** The renderer consumes this domain shape, independent of persistence or inference engines. */
 export function adaptMapFeature(feature: MapApiFeature): IntelligenceFeature {
@@ -32,17 +39,36 @@ export function adaptMapFeature(feature: MapApiFeature): IntelligenceFeature {
       licenseNote: p.licenseNote,
       region: p.region,
       sourceDate: p.sourceDate,
+      media:
+        p.status === "approved" &&
+        p.layer === "observations" &&
+        (p.featureType === "citizen_observation" ||
+          p.featureType === "approved_video")
+          ? safePublicMedia(p.media)
+          : undefined,
     },
   };
 }
 export async function getMapFeatures(
   signal?: AbortSignal,
-  layer: MapLayerKey | "all" = "all",
+  query: MapFeatureQuery | MapLayerKey | "all" = "all",
 ) {
-  const layers =
-    layer === "all" ? "coverage,observations,ai,satellite,boundaries" : layer;
+  const { bbox, layers } =
+    typeof query === "string"
+      ? {
+          bbox: [-3.5, 4.3, 1.5, 11.3],
+          layers:
+            query === "all"
+              ? ["coverage", "observations", "ai", "satellite", "boundaries"]
+              : [query],
+        }
+      : query;
+  if (!layers.length) return { features: [], truncated: false };
+  const parameters = new URLSearchParams();
+  if (bbox) parameters.set("bbox", bbox.join(","));
+  parameters.set("layers", layers.join(","));
   const collection = await apiRequest<MapFeatureCollection>(
-    `/map/features?bbox=-3.5,4.3,1.5,11.3&layers=${layers}`,
+    `/map/features?${parameters.toString().replaceAll("%2C", ",")}`,
     { signal },
   );
   if (

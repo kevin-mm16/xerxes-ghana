@@ -37,8 +37,12 @@ vi.mock("@/hooks/useMapFeatures", () => ({
 
 it("shows dates only for enabled reviewed observations and never remounts imagery when filtering them", () => {
   render(<MapExplorer />);
-  expect(screen.queryByRole("button", { name: "2025" })).toBeNull();
+  expect(screen.getByRole("button", { name: "2025" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Layers" }));
+  fireEvent.click(
+    screen.getByRole("checkbox", { name: /Reviewed observations/ }),
+  );
+  expect(screen.queryByRole("button", { name: "2025" })).toBeNull();
   fireEvent.click(
     screen.getByRole("checkbox", { name: /Reviewed observations/ }),
   );

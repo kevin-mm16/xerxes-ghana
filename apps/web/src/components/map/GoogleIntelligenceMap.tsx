@@ -9,6 +9,7 @@ import {
   ghanaCountryBounds,
   ghanaViewBounds,
   initialMapView,
+  mapViewport,
 } from "@/utils/map-view";
 import {
   districtZoomTier,
@@ -40,6 +41,7 @@ export function GoogleIntelligenceMap({
   timelineVisible = false,
   initialCamera,
   onCameraChange,
+  onViewportChange,
   focusFeature,
 }: IntelligenceMapProps & { apiKey: string; onUnavailable: () => void }) {
   const container = useRef<HTMLDivElement>(null);
@@ -51,6 +53,8 @@ export function GoogleIntelligenceMap({
   selection.current = onSelectFeature;
   const cameraChanged = useRef(onCameraChange);
   cameraChanged.current = onCameraChange;
+  const viewportChanged = useRef(onViewportChange);
+  viewportChanged.current = onViewportChange;
   const featureLookup = useRef(
     new globalThis.Map<string, IntelligenceFeature>(),
   );
@@ -73,6 +77,19 @@ export function GoogleIntelligenceMap({
       const zoom = instance?.getZoom();
       if (center && zoom !== undefined)
         cameraChanged.current?.({ center: [center.lat(), center.lng()], zoom });
+      const bounds = instance?.getBounds?.();
+      if (bounds && zoom !== undefined) {
+        const viewport = mapViewport(
+          [
+            bounds.getSouthWest().lng(),
+            bounds.getSouthWest().lat(),
+            bounds.getNorthEast().lng(),
+            bounds.getNorthEast().lat(),
+          ],
+          zoom,
+        );
+        if (viewport) viewportChanged.current?.(viewport);
+      }
     }
     const unavailable = () => {
       if (disposed) return;

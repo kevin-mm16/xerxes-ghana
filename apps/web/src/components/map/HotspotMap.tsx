@@ -12,6 +12,7 @@ import {
   ghanaCountryBounds,
   ghanaViewBounds,
   initialMapView,
+  mapViewport,
 } from "@/utils/map-view";
 import { featureBounds } from "@/utils/map-geometry";
 import { MapNavigation } from "./MapNavigation";
@@ -22,15 +23,34 @@ import type { IntelligenceMapProps } from "./map-props";
 function CameraController({
   initialCamera,
   onCameraChange,
+  onViewportChange,
   focusFeature,
 }: Pick<
   IntelligenceMapProps,
-  "initialCamera" | "onCameraChange" | "focusFeature"
+  "initialCamera" | "onCameraChange" | "onViewportChange" | "focusFeature"
 >) {
   const map = useMap();
   const initial = useRef(initialCamera);
   const changed = useRef(onCameraChange);
   changed.current = onCameraChange;
+  const viewportChanged = useRef(onViewportChange);
+  viewportChanged.current = onViewportChange;
+  function reportView() {
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+    changed.current?.({ center: [center.lat, center.lng], zoom });
+    const bounds = map.getBounds();
+    const viewport = mapViewport(
+      [
+        bounds.getWest(),
+        bounds.getSouth(),
+        bounds.getEast(),
+        bounds.getNorth(),
+      ],
+      zoom,
+    );
+    if (viewport) viewportChanged.current?.(viewport);
+  }
   useEffect(() => {
     if (initial.current)
       map.setView(initial.current.center, initial.current.zoom, {
@@ -38,15 +58,12 @@ function CameraController({
       });
     else
       map.fitBounds(ghanaCountryBounds, { padding: [40, 48], animate: false });
+    reportView();
   }, [map]);
   useMapEvents({
-    moveend: () => {
-      const center = map.getCenter();
-      changed.current?.({
-        center: [center.lat, center.lng],
-        zoom: map.getZoom(),
-      });
-    },
+    moveend: reportView,
+    zoomend: reportView,
+    resize: reportView,
   });
   useEffect(() => {
     if (!focusFeature) return;
@@ -72,6 +89,7 @@ export function HotspotMap({
   timelineVisible = false,
   initialCamera,
   onCameraChange,
+  onViewportChange,
   focusFeature,
 }: IntelligenceMapProps) {
   return (
@@ -92,6 +110,7 @@ export function HotspotMap({
         <CameraController
           initialCamera={initialCamera}
           onCameraChange={onCameraChange}
+          onViewportChange={onViewportChange}
           focusFeature={focusFeature}
         />
         <SatelliteLayers

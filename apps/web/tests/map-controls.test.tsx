@@ -120,11 +120,11 @@ it("supports keyboard layer panels and restores the toolbar trigger on Escape", 
 it("distinguishes pending or unavailable geography from an empty successful response", () => {
   const props = {
     layers: {
-      coverage: false,
-      observations: false,
+      coverage: true,
+      observations: true,
       ai: false,
       satellite: false,
-      boundaries: false,
+      boundaries: true,
     },
     counts: {
       coverage: 0,
@@ -138,10 +138,10 @@ it("distinguishes pending or unavailable geography from an empty successful resp
     onLabelsChange: vi.fn(),
   };
   const view = render(<MapLayerControl {...props} loading />);
-  expect(screen.getAllByText("Loading public geography…")).toHaveLength(5);
-  expect(screen.queryByText("No model results available")).toBeNull();
+  expect(screen.getAllByText("Loading public geography…")).toHaveLength(3);
+  expect(screen.getByText("No model results available")).toBeTruthy();
   view.rerender(<MapLayerControl {...props} unavailable />);
-  expect(screen.getAllByText("Public data unavailable")).toHaveLength(5);
+  expect(screen.getAllByText("Public data unavailable")).toHaveLength(3);
   view.rerender(<MapLayerControl {...props} />);
   expect(screen.getByText("No model results available")).toBeTruthy();
 });

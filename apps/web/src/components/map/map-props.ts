@@ -1,5 +1,5 @@
 import type { IntelligenceFeature } from "@/types/intelligence";
-import type { MapCamera } from "@/utils/map-view";
+import type { MapCamera, MapViewport } from "@/utils/map-view";
 
 export interface IntelligenceMapProps {
   timelineVisible?: boolean;
@@ -10,5 +10,6 @@ export interface IntelligenceMapProps {
   showLabels?: boolean;
   initialCamera?: MapCamera;
   onCameraChange?: (camera: MapCamera) => void;
+  onViewportChange?: (viewport: MapViewport) => void;
   focusFeature?: IntelligenceFeature;
 }

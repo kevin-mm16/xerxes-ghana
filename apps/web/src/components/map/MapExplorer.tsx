@@ -8,6 +8,7 @@ import type {
   MapLayerState,
 } from "@/types/intelligence";
 import { useMapFeatures } from "@/hooks/useMapFeatures";
+import { districtMinimumZoom, type MapViewport } from "@/utils/map-view";
 import { HotspotMap } from "./BrowserMaps";
 import { IntelligenceDrawer } from "./IntelligenceDrawer";
 import { MapFilters, type MapFilterState } from "./MapFilters";
@@ -18,7 +19,7 @@ import { TimelineControl } from "./TimelineControl";
 const defaultFilters: MapFilterState = { search: "", dateRange: "All" };
 const defaultLayers: MapLayerState = {
   coverage: false,
-  observations: false,
+  observations: true,
   ai: false,
   satellite: false,
   boundaries: true,
@@ -40,9 +41,32 @@ export function MapExplorer({
 }: {
   variant?: "workspace" | "preview";
 }) {
-  const data = useMapFeatures();
   const [filters, setFilters] = useState(defaultFilters);
   const [layers, setLayers] = useState(defaultLayers);
+  const [viewport, setViewport] = useState<MapViewport>();
+  const onViewportChange = useCallback((next: MapViewport) => {
+    setViewport((current) =>
+      current?.zoom === next.zoom &&
+      current.bbox.every((value, index) => value === next.bbox[index])
+        ? current
+        : next,
+    );
+  }, []);
+  const requestedLayers = useMemo(
+    () =>
+      (Object.keys(layers) as MapLayerKey[]).filter(
+        (layer) =>
+          layers[layer] &&
+          (layer !== "boundaries" ||
+            (viewport?.zoom ?? 0) >= districtMinimumZoom),
+      ),
+    [layers, viewport?.zoom],
+  );
+  const data = useMapFeatures({
+    bbox: viewport?.bbox,
+    layers: requestedLayers,
+    enabled: Boolean(viewport),
+  });
   const [panel, setPanel] = useState<"filters" | "layers">();
   const [selectedId, setSelectedId] = useState<string>();
   const [selectedYear, setSelectedYear] = useState<number>();
@@ -133,6 +157,7 @@ export function MapExplorer({
         onSelectFeature={select}
         compact={compact}
         focusFeature={focusFeature}
+        onViewportChange={onViewportChange}
       />
       <div className="absolute left-3 right-3 top-3 z-[600] flex items-start gap-1.5 sm:right-auto sm:max-w-[calc(100%-15rem)]">
         {!compact && (
@@ -171,7 +196,7 @@ export function MapExplorer({
                 className="absolute left-0 top-12 w-[min(340px,calc(100vw-1.5rem))] overflow-hidden rounded-md border border-line bg-paper shadow-lift"
               >
                 <p className="border-b border-line px-3 py-2 text-[11px] text-muted">
-                  Searches loaded public features
+                  Searches loaded features in this view. Zoom in for districts.
                 </p>
                 {searchResults.length === 0 ? (
                   <p role="status" className="p-3 text-sm text-muted">
@@ -318,6 +343,7 @@ export function MapExplorer({
             onLabelsChange={setShowLabels}
             loading={data.loading}
             unavailable={Boolean(data.error)}
+            zoom={viewport?.zoom ?? 0}
           />
         </MapPanel>
       )}

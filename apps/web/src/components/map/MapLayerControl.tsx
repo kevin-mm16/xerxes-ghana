@@ -11,6 +11,7 @@ interface Props {
   onLabelsChange: (value: boolean) => void;
   loading?: boolean;
   unavailable?: boolean;
+  zoom?: number;
 }
 const groups: Array<{
   title: string;
@@ -66,14 +67,20 @@ export function MapLayerControl({
   onLabelsChange,
   loading = false,
   unavailable = false,
+  zoom = 9,
 }: Props) {
   function layerHelp(key: MapLayerKey, help: string) {
+    if (key === "ai" && counts[key] === 0) return "No model results available";
+    if (key === "satellite" && counts[key] === 0)
+      return "No analysis results available";
+    if (key === "boundaries" && zoom < 9)
+      return "Zoom to level 9 to load visible districts";
+    if (!layers[key] && key !== "ai" && key !== "satellite")
+      return "Enable to load records in this view";
     if (counts[key] > 0) return help;
     if (loading) return "Loading public geography…";
     if (unavailable) return "Public data unavailable";
-    if (key === "ai") return "No model results available";
-    if (key === "satellite") return "No analysis results available";
-    return "No public records available";
+    return "No public records in this view";
   }
   return (
     <div className="space-y-5">
@@ -106,12 +113,14 @@ export function MapLayerControl({
             {group.items.map(({ key, label, help }) => (
               <label
                 key={key}
-                className={`flex items-start gap-3 text-sm ${counts[key] === 0 ? "cursor-not-allowed text-muted" : "cursor-pointer text-ink"}`}
+                className={`flex items-start gap-3 text-sm ${(key === "ai" || key === "satellite") && counts[key] === 0 ? "cursor-not-allowed text-muted" : "cursor-pointer text-ink"}`}
               >
                 <input
                   type="checkbox"
                   checked={layers[key]}
-                  disabled={counts[key] === 0}
+                  disabled={
+                    (key === "ai" || key === "satellite") && counts[key] === 0
+                  }
                   onChange={() => onChange({ ...layers, [key]: !layers[key] })}
                   className="mt-0.5 h-4 w-4 accent-forest-600"
                 />

@@ -25,6 +25,10 @@ vi.mock("@/services/google-maps", () => ({
       fitBounds = mocks.fitBounds;
       getZoom = () => mocks.zoom;
       getCenter = () => ({ lat: () => 9.2, lng: () => -1.4 });
+      getBounds = () => ({
+        getSouthWest: () => ({ lat: () => 9.1, lng: () => -1.8 }),
+        getNorthEast: () => ({ lat: () => 9.6, lng: () => -1.1 }),
+      });
       addListener = (name: string, listener: () => void) => {
         if (name === "idle") mocks.idle = listener;
         return { remove: vi.fn() };
@@ -130,6 +134,7 @@ it("keeps one Google map and existing geometry while changing labels and selecti
 it("restores a retained camera without fitting the national overview", async () => {
   google();
   const changed = vi.fn();
+  const viewportChanged = vi.fn();
   render(
     <GoogleIntelligenceMap
       apiKey="key"
@@ -138,6 +143,7 @@ it("restores a retained camera without fitting the national overview", async () 
       features={[]}
       initialCamera={{ center: [9.2, -1.4], zoom: 13 }}
       onCameraChange={changed}
+      onViewportChange={viewportChanged}
     />,
   );
   await waitFor(() => expect(mocks.construct).toHaveBeenCalled());
@@ -150,4 +156,8 @@ it("restores a retained camera without fitting the national overview", async () 
     mocks.idle?.();
   });
   expect(changed).toHaveBeenCalledWith({ center: [9.2, -1.4], zoom: 13 });
+  expect(viewportChanged).toHaveBeenCalledWith({
+    bbox: [-1.8, 9.1, -1.1, 9.6],
+    zoom: 13,
+  });
 });
