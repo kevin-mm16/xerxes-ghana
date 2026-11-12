@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import "leaflet/dist/leaflet.css";
+import "@/styles/globals.css";
 
 export const metadata: Metadata = {
   title: "XERSXES Ghana | Environmental Intelligence",
-  description: "Environmental monitoring research platform",
+  description:
+    "Map-first environmental intelligence and civic evidence platform for Ghana.",
 };
 
 export default function RootLayout({
@@ -11,7 +13,12 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <div className="bg-amber-50 px-4 py-1.5 text-center text-xs font-semibold text-amber-950">
+          Development | demonstration monitoring boundaries
+        </div>
+        {children}
+      </body>
     </html>
   );
 }

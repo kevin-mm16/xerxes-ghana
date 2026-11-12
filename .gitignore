@@ -43,3 +43,18 @@ models/*.pth
 *.tif
 *.tiff
 *.gpkg
+
+# Local frontend development logs
+vite-dev*.log
+npm-debug.log*
+
+.vite/
+
+# Versioned synthetic UI fixtures
+!apps/web/src/data/
+!apps/web/src/data/**
+
+.local/
+# Only synthetic backend seed geometry is versioned
+!apps/api/src/xerxes_api/data/
+!apps/api/src/xerxes_api/data/*.geojson
