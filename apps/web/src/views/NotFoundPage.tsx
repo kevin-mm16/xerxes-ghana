@@ -1,19 +1,25 @@
-import AppLink from "next/link";
+import { Icon, LinkButton, SectionLabel } from "@/components/ui";
 
 export function NotFoundPage() {
   return (
-    <>
-      <section className="mx-auto max-w-3xl px-4 py-20 text-center sm:px-6 lg:px-8">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-forest-600">Not found</p>
-        <h1 className="mt-4 font-serif text-4xl font-medium">This page is not available</h1>
-        <p className="mt-4 text-muted">The requested route does not exist in the current frontend.</p>
-        <AppLink
-          href="/"
-          className="mt-8 inline-flex rounded-xl bg-forest-600 px-5 py-3 text-sm font-bold text-white hover:bg-forest-800"
-        >
-          Return home
-        </AppLink>
-      </section>
-    </>
+    <section className="page-shell">
+      <div className="mx-auto max-w-2xl py-12 sm:py-20">
+        <SectionLabel>404 / XERSXES Ghana</SectionLabel>
+        <h1 className="page-heading mt-5">This page is unavailable.</h1>
+        <p className="page-intro mt-5">
+          The link may be incorrect, or this record may not be public. Private
+          submissions are not accessible from public record links.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <LinkButton href="/map">
+            Explore Ghana
+            <Icon name="arrow-right" className="h-4 w-4" />
+          </LinkButton>
+          <LinkButton href="/evidence" variant="secondary">
+            Reviewed observations
+          </LinkButton>
+        </div>
+      </div>
+    </section>
   );
 }
