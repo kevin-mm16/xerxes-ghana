@@ -1,0 +1,14 @@
+[
+  {
+    "font": "Inter",
+    "source": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2",
+    "licence": "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/OFL.txt",
+    "bytes": 48256
+  },
+  {
+    "font": "Newsreader",
+    "source": "https://fonts.gstatic.com/s/newsreader/v26/cY9AfjOCX1hbuyalUrK4397yjA.woff2",
+    "licence": "https://raw.githubusercontent.com/google/fonts/main/ofl/newsreader/OFL.txt",
+    "bytes": 132000
+  }
+]
