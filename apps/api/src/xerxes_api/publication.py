@@ -13,6 +13,10 @@ from xerxes_api.db import get_engine
 def publish_sanitized(session: Session, observation_id: UUID, title: str, description: str):
     if not title.strip() or len(title) > 160 or not description.strip() or len(description) > 5000:
         raise ValueError("Provide bounded sanitized title and description")
+    if session.execute(
+        text("SELECT 1 FROM evidence_media WHERE observation_id=:id"), {"id": observation_id}
+    ).first():
+        raise ValueError("Attached media requires authenticated review before publication")
     row = session.execute(
         text("""
         SELECT o.id, c.name FROM observations o

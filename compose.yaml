@@ -6,6 +6,8 @@ x-api-environment: &api-environment
   POSTGRES_DB: xerxes
   POSTGRES_USER: xerxes
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Create .env from .env.example}
+  EVIDENCE_STORAGE_PROVIDER: filesystem
+  EVIDENCE_STORAGE_PATH: /evidence
 
 services:
   db:
@@ -35,6 +37,8 @@ services:
   api:
     build: ./apps/api
     environment: *api-environment
+    volumes:
+      - evidence_data:/evidence
     depends_on:
       initialize:
         condition: service_completed_successfully
@@ -45,6 +49,16 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
+
+  media-worker:
+    build: ./apps/api
+    environment: *api-environment
+    volumes:
+      - evidence_data:/evidence
+    command: ["python", "-m", "xerxes_api.media_worker"]
+    depends_on:
+      initialize:
+        condition: service_completed_successfully
 
   web:
     build: ./apps/web
@@ -60,3 +74,4 @@ services:
 
 volumes:
   pg_data:
+  evidence_data:

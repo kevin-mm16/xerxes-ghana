@@ -46,6 +46,8 @@ def spatial(db_engine):
     with db_engine.connect() as connection:
         transaction = connection.begin()
         with Session(bind=connection, join_transaction_mode="create_savepoint") as session:
+            session.execute(text("DELETE FROM media_processing_jobs"))
+            session.execute(text("DELETE FROM evidence_media"))
             session.execute(text("DELETE FROM administrative_boundaries"))
             session.execute(text("DELETE FROM boundary_datasets"))
             session.execute(text("DELETE FROM public_locations"))

@@ -169,7 +169,7 @@ def test_expired_coverage_not_eligible(spatial):
 def test_schema_indexes_and_srid(db_engine):
     with db_engine.connect() as connection:
         version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
-        assert version == "0002_administrative_boundaries"
+        assert version == "0003_private_media"
         indexes = connection.execute(
             text("SELECT indexdef FROM pg_indexes WHERE indexname='ix_coverage_geometry'")
         ).scalar()

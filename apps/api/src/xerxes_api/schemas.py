@@ -51,6 +51,7 @@ class CoverageResult(ApiModel):
 
 
 class ObservationInput(ApiModel):
+    submission_id: UUID | None = None
     title: str | None = Field(default=None, min_length=1, max_length=160)
     description: str = Field(min_length=1, max_length=5000)
     observed_at: AwareDatetime
@@ -59,6 +60,7 @@ class ObservationInput(ApiModel):
     media_type: Literal["none", "image", "video", "mixed"] = "none"
     anonymous: bool = True
     consent: Literal[True]
+    media: "MediaAttachment | None" = None
 
     @model_validator(mode="after")
     def valid_context(self):
@@ -74,6 +76,49 @@ class SubmissionReceipt(ApiModel):
     status: Literal["pending"]
     submitted_at: datetime
     coverage_state: str
+    media: "MediaStatus | None" = None
+
+
+class MediaAttachment(ApiModel):
+    upload_id: UUID
+    upload_token: str = Field(min_length=43, max_length=43, pattern=r"^[A-Za-z0-9_-]+$")
+
+
+class UploadIntentInput(ApiModel):
+    filename: str = Field(min_length=1, max_length=255)
+    content_type: Literal["image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime"]
+    file_size: int = Field(strict=True, gt=0, le=52428800)
+    consent: Literal[True]
+
+    @field_validator("filename")
+    @classmethod
+    def safe_filename(cls, value):
+        if any(character in value for character in ("/", "\\")) or not value.isprintable():
+            raise ValueError("Invalid filename")
+        return value
+
+
+class UploadIntentReceipt(ApiModel):
+    id: UUID
+    upload_token: str
+    upload_url: str
+    expires_at: datetime
+    max_bytes: int
+
+
+class MediaStatus(ApiModel):
+    id: UUID
+    processing_status: Literal[
+        "awaiting_upload",
+        "uploading",
+        "quarantined",
+        "processing",
+        "review_ready",
+        "failed",
+        "expired",
+    ]
+    media_kind: Literal["image", "video"]
+    error_code: str | None = None
 
 
 class PublicObservation(ApiModel):
@@ -149,3 +194,7 @@ def parse_bbox(value: str | None):
         return {"west": west, "south": south, "east": east, "north": north}
     except (ValueError, TypeError):
         raise ValueError("bbox must be west,south,east,north with increasing valid coordinates")
+
+
+ObservationInput.model_rebuild()
+SubmissionReceipt.model_rebuild()

@@ -16,6 +16,8 @@ dependencies = [
   "alembic>=1.14,<2",
   "python-dotenv>=1,<2",
   "pyshp>=2.3,<3",
+  "Pillow>=12.1.1,<14",
+  "psutil>=6,<8",
 ]
 
 [project.optional-dependencies]

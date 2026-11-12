@@ -9,11 +9,13 @@ from xerxes_api.coverage import router as coverage_router
 from xerxes_api.db import get_engine
 from xerxes_api.map_features import router as map_router
 from xerxes_api.observations import router as observation_router
+from xerxes_api.uploads import router as uploads_router
 
 app = FastAPI(title="XERSXES Ghana API", version="0.2.0")
 app.include_router(coverage_router)
 app.include_router(observation_router)
 app.include_router(map_router)
+app.include_router(uploads_router)
 
 
 @app.middleware("http")
@@ -39,6 +41,7 @@ def ready():
     with get_engine().connect() as connection:
         connection.execute(text("SELECT 1 FROM coverage_regions LIMIT 1"))
         connection.execute(text("SELECT 1 FROM administrative_boundaries LIMIT 1"))
+        connection.execute(text("SELECT 1 FROM evidence_media LIMIT 1"))
         connection.execute(text("SELECT PostGIS_Version()"))
     return {"status": "ready"}
 

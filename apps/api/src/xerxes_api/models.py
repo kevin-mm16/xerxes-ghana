@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 from geoalchemy2 import Geometry
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     Date,
     DateTime,
@@ -90,6 +91,8 @@ class Observation(Base):
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    submission_id: Mapped[UUID | None] = mapped_column(unique=True)
+    submission_hash: Mapped[str | None] = mapped_column(String(64))
     coverage_region_id: Mapped[UUID | None] = mapped_column(ForeignKey("coverage_regions.id"))
     title: Mapped[str | None] = mapped_column(String(160))
     description: Mapped[str] = mapped_column(Text)
@@ -148,3 +151,56 @@ class PublicLocation(Base):
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class EvidenceMedia(Base):
+    __tablename__ = "evidence_media"
+    __table_args__ = (
+        Index("ix_media_processing", "processing_status", "created_at"),
+        Index("ix_media_hash", "original_sha256"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    observation_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("observations.id", ondelete="SET NULL"), unique=True
+    )
+    upload_token_hash: Mapped[str] = mapped_column(String(64))
+    original_filename: Mapped[str] = mapped_column(String(255))
+    declared_mime_type: Mapped[str] = mapped_column(String(80))
+    detected_mime_type: Mapped[str | None] = mapped_column(String(80))
+    expected_size: Mapped[int] = mapped_column(BigInteger)
+    file_size: Mapped[int | None] = mapped_column(BigInteger)
+    original_sha256: Mapped[str | None] = mapped_column(String(64))
+    original_object_key: Mapped[str] = mapped_column(String(240), unique=True)
+    review_object_key: Mapped[str | None] = mapped_column(String(240))
+    thumbnail_object_key: Mapped[str | None] = mapped_column(String(240))
+    review_sha256: Mapped[str | None] = mapped_column(String(64))
+    thumbnail_sha256: Mapped[str | None] = mapped_column(String(64))
+    processing_status: Mapped[str] = mapped_column(String(24))
+    processing_error: Mapped[str | None] = mapped_column(String(40))
+    media_kind: Mapped[str] = mapped_column(String(8))
+    width: Mapped[int | None] = mapped_column(Integer)
+    height: Mapped[int | None] = mapped_column(Integer)
+    duration_seconds: Mapped[float | None] = mapped_column(Float)
+    processing_version: Mapped[str | None] = mapped_column(String(100))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class MediaProcessingJob(Base):
+    __tablename__ = "media_processing_jobs"
+    __table_args__ = (Index("ix_media_jobs_available", "status", "available_at"),)
+
+    media_id: Mapped[UUID] = mapped_column(
+        ForeignKey("evidence_media.id", ondelete="CASCADE"), primary_key=True
+    )
+    status: Mapped[str] = mapped_column(String(16), default="queued")
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    available_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    lease_token: Mapped[UUID | None] = mapped_column()
+    last_error: Mapped[str | None] = mapped_column(String(40))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
