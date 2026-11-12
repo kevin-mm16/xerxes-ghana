@@ -1,4 +1,4 @@
-"""Durable, leased private-media processing. No publication or public object writes."""
+"""Leased private-media processing, then separately certified public-derivative jobs."""
 
 import argparse
 import hashlib
@@ -171,7 +171,11 @@ def run_once(engine=None):
     with Session(engine or get_engine()) as session:
         claim = claim_next_job(session)
         if claim is None:
-            return False
+            # The public queue is distinct: a ready private derivative never
+            # schedules publication without an authenticated certification.
+            from xerxes_api.public_media import run_public_once
+
+            return run_public_once(engine)
         process_claim(session, claim)
         return True
 
