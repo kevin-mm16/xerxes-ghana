@@ -4,12 +4,27 @@ interface VerificationChecklistProps {
 
 export function VerificationChecklist({ items }: VerificationChecklistProps) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
-      <h2 className="font-bold">Verification checklist</h2>
-      <div className="mt-4 space-y-3">
-        {items.map((item, index) => (
-          <label key={item} className="flex items-center gap-3 text-sm text-slate-700">
-            <input type="checkbox" defaultChecked={index < 3} className="h-4 w-4 accent-forest-600" />
+    <section
+      id="review-checklist"
+      aria-labelledby="checklist-heading"
+      className="scroll-mt-6 border-t border-[#d9ddd6] px-5 py-5"
+    >
+      <h3 id="checklist-heading" className="text-sm font-semibold">
+        Review checklist
+      </h3>
+      <p className="mt-1 text-xs leading-5 text-[#65706a]">
+        Practice only. Checks do not validate evidence or save to the server.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {items.map((item) => (
+          <label
+            key={item}
+            className="flex cursor-pointer items-start gap-2.5 text-xs leading-5 text-[#48564e]"
+          >
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 shrink-0 rounded-sm accent-[#346c55]"
+            />
             {item}
           </label>
         ))}

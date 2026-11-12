@@ -1,95 +1,168 @@
-import type { Report, ReportStatus } from "@/types";
-import { SeverityBadge } from "@/components/ui/SeverityBadge";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+"use client";
+
+import { useMemo, useState } from "react";
+import type { Report } from "@/types";
+import { Badge, Button, Icon, Input } from "@/components/ui";
 import { formatDate } from "@/utils/format";
 
 interface ReviewQueueTableProps {
   reports: Report[];
+  selectedId: string;
   onSelect: (report: Report) => void;
-  onStatusChange: (reportId: string, status: ReportStatus) => void;
 }
 
-export function ReviewQueueTable({ reports, onSelect, onStatusChange }: ReviewQueueTableProps) {
-  return (
-    <section id="review-queue" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-5">
-        <div>
-          <h2 className="font-bold">Review queue</h2>
-          <p className="mt-1 text-sm text-slate-500">Actions are staged locally until backend integration.</p>
-        </div>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-          {reports.length} reports
-        </span>
-      </div>
+const filters = [
+  { id: "all", label: "All" },
+  { id: "pending", label: "Needs review" },
+  { id: "critical", label: "Critical" },
+] as const;
 
-      <div className="overflow-x-auto">
-        <table className="min-w-[900px] w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-[0.12em] text-slate-500">
-            <tr>
-              <th className="px-5 py-3">Report title</th>
-              <th className="px-5 py-3">Region</th>
-              <th className="px-5 py-3">District</th>
-              <th className="px-5 py-3">Severity</th>
-              <th className="px-5 py-3">Status</th>
-              <th className="px-5 py-3">Date submitted</th>
-              <th className="px-5 py-3">Assigned moderator</th>
-              <th className="px-5 py-3 text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {reports.map((report) => (
-              <tr key={report.id} className="align-top">
-                <td className="px-5 py-4 font-semibold text-slate-900">{report.title}</td>
-                <td className="px-5 py-4 text-slate-600">{report.region}</td>
-                <td className="px-5 py-4 text-slate-600">{report.district}</td>
-                <td className="px-5 py-4"><SeverityBadge severity={report.severity} compact /></td>
-                <td className="px-5 py-4"><StatusBadge status={report.status} compact /></td>
-                <td className="px-5 py-4 text-slate-600">{formatDate(report.dateSubmitted)}</td>
-                <td className="px-5 py-4 text-slate-600">{report.assignedModerator ?? "Unassigned"}</td>
-                <td className="px-5 py-4">
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onSelect(report)}
-                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                    >
-                      Review
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onStatusChange(report.id, "Verified")}
-                      className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800"
-                    >
-                      Verify
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onStatusChange(report.id, "Rejected")}
-                      className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700"
-                    >
-                      Reject
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onStatusChange(report.id, "Escalated")}
-                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-800"
-                    >
-                      Escalate
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onStatusChange(report.id, "Under Review")}
-                      className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800"
-                    >
-                      Assign
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+export function ReviewQueueTable({
+  reports,
+  selectedId,
+  onSelect,
+}: ReviewQueueTableProps) {
+  const [filter, setFilter] = useState<(typeof filters)[number]["id"]>("all");
+  const [search, setSearch] = useState("");
+  const visibleReports = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return reports.filter((report) => {
+      const matchesFilter =
+        filter === "all" ||
+        (filter === "critical" && report.severity === "Critical") ||
+        (filter === "pending" &&
+          ["Pending", "Under Review"].includes(report.status));
+      return (
+        matchesFilter &&
+        `${report.title} ${report.region} ${report.district}`
+          .toLowerCase()
+          .includes(query)
+      );
+    });
+  }, [reports, filter, search]);
+
+  return (
+    <section
+      id="review-queue"
+      aria-labelledby="queue-heading"
+      className="min-w-0 scroll-mt-6"
+    >
+      <header className="border-b border-[#d9ddd6] p-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2
+            id="queue-heading"
+            tabIndex={-1}
+            className="text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#346c55]"
+          >
+            Review queue
+          </h2>
+          <span aria-live="polite" className="font-mono text-xs text-[#65706a]">
+            {visibleReports.length} / {reports.length}
+          </span>
+        </div>
+        <label className="relative mt-4 block">
+          <span className="sr-only">Search sample reports</span>
+          <Icon
+            name="search"
+            className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#65706a]"
+          />
+          <Input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search title or area"
+            className="min-w-0 pl-9"
+          />
+        </label>
+        <div
+          role="group"
+          aria-label="Filter sample reports"
+          className="mt-3 flex flex-wrap gap-1"
+        >
+          {filters.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              aria-pressed={filter === item.id}
+              onClick={() => setFilter(item.id)}
+              className={`min-h-9 rounded-[4px] px-3 text-xs font-medium transition-colors ${filter === item.id ? "bg-[#e5ece5] text-[#28513f]" : "text-[#65706a] hover:bg-[#f0f2ec] hover:text-[#172021]"}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </header>
+      <ul
+        aria-label="Sample observations"
+        className="divide-y divide-[#e4e7e0]"
+      >
+        {visibleReports.map((report) => (
+          <li key={report.id}>
+            <button
+              type="button"
+              onClick={() => onSelect(report)}
+              aria-pressed={selectedId === report.id}
+              aria-controls="review-workspace"
+              className={`block w-full min-w-0 border-l-2 p-4 text-left transition-colors ${selectedId === report.id ? "border-[#346c55] bg-[#edf1e9]" : "border-transparent hover:bg-[#f5f6f0]"}`}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-[#65706a]">
+                  {report.id}
+                </span>
+                <span
+                  className={`text-[10px] font-medium ${report.severity === "Critical" ? "text-[#9e3c32]" : "text-[#65706a]"}`}
+                >
+                  {report.severity} severity
+                </span>
+              </div>
+              <h3 className="mt-2 break-words text-sm font-semibold leading-5 text-[#172021]">
+                {report.title}
+              </h3>
+              <p className="mt-1 break-words text-xs leading-5 text-[#65706a]">
+                {report.district} / {report.region}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <Badge
+                  tone={
+                    report.status === "Verified"
+                      ? "green"
+                      : report.status === "Escalated" ||
+                          report.status === "Rejected"
+                        ? "red"
+                        : report.status === "Under Review"
+                          ? "amber"
+                          : "neutral"
+                  }
+                >
+                  {report.status}
+                </Badge>
+                <span className="text-[10px] text-[#65706a]">
+                  {formatDate(report.dateSubmitted)}
+                </span>
+              </div>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {visibleReports.length === 0 ? (
+        <div className="px-5 py-10 text-center">
+          <p className="text-sm font-medium">No matching samples</p>
+          <p className="mt-2 text-xs leading-5 text-[#65706a]">
+            Try another area or remove the filter.
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-4"
+            onClick={() => {
+              setSearch("");
+              setFilter("all");
+            }}
+          >
+            Clear filters
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 }

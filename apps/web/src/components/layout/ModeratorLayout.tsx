@@ -7,9 +7,11 @@ interface ModeratorLayoutProps {
 
 export function ModeratorLayout({ children }: ModeratorLayoutProps) {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 lg:grid lg:grid-cols-[280px_1fr]">
+    <div className="min-h-screen min-w-0 bg-[#172021] font-sans text-[#172021] lg:grid lg:grid-cols-[208px_minmax(0,1fr)]">
       <ModeratorSidebar />
-      <main className="min-w-0 bg-slate-100 text-slate-950">{children}</main>
+      <main id="operations-main" className="min-w-0 bg-[#f5f3ed]">
+        {children}
+      </main>
     </div>
   );
 }

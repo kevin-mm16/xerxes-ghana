@@ -1,22 +1,57 @@
 interface AuditTrailProps {
   items: string[];
+  exampleItems?: string[];
 }
 
-export function AuditTrail({ items }: AuditTrailProps) {
+export function AuditTrail({ items, exampleItems = [] }: AuditTrailProps) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
-      <h2 className="font-bold">Audit trail</h2>
-      <div className="mt-4 space-y-3">
-        {items.map((item, index) => (
-          <div key={item} className="flex gap-3 text-sm">
-            <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-slate-400" />
-            <div>
-              <p className="font-semibold text-slate-800">{item}</p>
-              <p className="text-xs text-slate-500">Mock event {index + 1}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+    <section
+      id="session-activity"
+      aria-labelledby="activity-heading"
+      className="scroll-mt-6 border-t border-[#d9ddd6] px-5 py-5"
+    >
+      <h3 id="activity-heading" className="text-sm font-semibold">
+        Session activity
+      </h3>
+      <p className="mt-1 text-xs leading-5 text-[#65706a]">
+        Local demo actions only. This is not a persistent audit log.
+      </p>
+      {items.length ? (
+        <ol className="mt-4 space-y-3">
+          {items.map((item, index) => (
+            <li
+              key={`${index}-${item}`}
+              className="flex gap-3 text-xs leading-5 text-[#48564e]"
+            >
+              <span className="font-mono text-[10px] text-[#65706a]">
+                {String(items.length - index).padStart(2, "0")}
+              </span>
+              <p>{item}</p>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="mt-4 text-xs text-[#65706a]">
+          No demo decisions in this session.
+        </p>
+      )}
+      {exampleItems.length ? (
+        <details className="mt-5 border-t border-[#e4e7e0] pt-4 text-xs text-[#65706a]">
+          <summary className="cursor-pointer font-medium">
+            Example audit sequence
+          </summary>
+          <ol className="mt-3 list-inside list-decimal space-y-2 leading-5">
+            {exampleItems.map((item) => (
+              <li key={item}>
+                {item}{" "}
+                <span className="text-[10px] uppercase tracking-wide">
+                  / sample
+                </span>
+              </li>
+            ))}
+          </ol>
+        </details>
+      ) : null}
     </section>
   );
 }
