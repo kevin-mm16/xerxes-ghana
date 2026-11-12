@@ -1,4 +1,5 @@
 import type { MediaType, ReportStatus, SeverityLevel } from "@/types";
+import type { PublicMedia } from "./api";
 
 export type MapLayerKey =
   | "coverage"
@@ -62,6 +63,7 @@ export interface IntelligenceFeatureProperties {
   boundaryLevel?: string;
   licenseNote?: string;
   sourceDate?: string;
+  media?: PublicMedia;
 }
 
 export interface IntelligenceFeature {

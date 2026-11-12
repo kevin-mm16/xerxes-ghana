@@ -5,6 +5,8 @@ import AppLink from "next/link";
 import { Badge, Icon, IconButton, SectionLabel } from "@/components/ui";
 import type { IntelligenceFeature } from "@/types/intelligence";
 import { formatDate } from "@/utils/format";
+import { PublicMediaPlayer } from "@/components/evidence/PublicMediaPlayer";
+import { safePublicMedia } from "@/utils/public-media";
 
 const featureLabels: Record<IntelligenceFeature["type"], string> = {
   administrative_boundary: "District reference",
@@ -49,6 +51,10 @@ export function IntelligenceDrawer({
     : (p.publicLabel ?? p.region);
   const observation =
     feature.type === "citizen_observation" || feature.type === "approved_video";
+  const media =
+    observation && p.status === "Verified"
+      ? safePublicMedia(p.media)
+      : undefined;
   return (
     <aside
       ref={panel}
@@ -89,6 +95,11 @@ export function IntelligenceDrawer({
           <Badge tone="amber">Unconfirmed signal</Badge>
         )}
       </div>
+      {media && (
+        <div className="mt-5">
+          <PublicMediaPlayer media={media} title={p.title} variant="preview" />
+        </div>
+      )}
       {p.summary && !reference && (
         <p className="mt-5 border-t border-line pt-4 text-sm leading-6 text-muted">
           {p.summary}

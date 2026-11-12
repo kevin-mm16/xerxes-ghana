@@ -2,6 +2,7 @@ import AppLink from "next/link";
 import { notFound } from "next/navigation";
 import { PublicLocationMap } from "@/components/evidence/PublicLocationMap";
 import { publicObservedDate } from "@/components/evidence/ObservationRecord";
+import { PublicMediaPlayer } from "@/components/evidence/PublicMediaPlayer";
 import {
   Alert,
   Badge,
@@ -11,6 +12,7 @@ import {
   buttonStyles,
 } from "@/components/ui";
 import type { PublicObservation } from "@/types/api";
+import { safePublicMedia } from "@/utils/public-media";
 
 function RecordUnavailable({ reportId }: { reportId: string }) {
   return (
@@ -56,6 +58,7 @@ export async function ReportDetailsPage({ reportId }: { reportId: string }) {
     return <RecordUnavailable reportId={reportId} />;
   }
   if (record.status !== "approved") notFound();
+  const media = safePublicMedia(record.media);
 
   return (
     <article className="page-shell">
@@ -93,12 +96,25 @@ export async function ReportDetailsPage({ reportId }: { reportId: string }) {
               {record.description}
             </p>
           </section>
-          <div className="mt-7 flex items-start gap-3 border-y border-line py-4 text-xs leading-6 text-muted">
-            <Icon name="file" className="mt-0.5 h-4 w-4" />
-            <p>
-              Text record. No public image or video is available on this record.
-            </p>
-          </div>
+          {media ? (
+            <section aria-labelledby="public-media-heading" className="mt-7">
+              <h2
+                id="public-media-heading"
+                className="mb-4 text-lg font-semibold tracking-tight"
+              >
+                Published evidence
+              </h2>
+              <PublicMediaPlayer media={media} title={record.title} />
+            </section>
+          ) : (
+            <div className="mt-7 flex items-start gap-3 border-y border-line py-4 text-xs leading-6 text-muted">
+              <Icon name="file" className="mt-0.5 h-4 w-4" />
+              <p>
+                Text record. No public image or video is available on this
+                record.
+              </p>
+            </div>
+          )}
           <section aria-labelledby="public-location-heading" className="mt-9">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h2

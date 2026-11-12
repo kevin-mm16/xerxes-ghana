@@ -54,6 +54,7 @@ export interface MapApiFeature {
     licenseNote?: string;
     region?: string;
     sourceDate?: string;
+    media?: PublicMedia | null;
   };
 }
 export interface MapFeatureCollection {
@@ -110,4 +111,18 @@ export interface PublicObservation {
   publicLocation: IntelligenceGeometry;
   publicLabel: string;
   precisionLevel: string;
+  media?: PublicMedia | null;
+}
+
+/** Only a separately approved public derivative, never private intake media. */
+export interface PublicMedia {
+  id: string;
+  mediaKind: "image" | "video";
+  mimeType: "image/jpeg" | "video/mp4";
+  url: string;
+  thumbnailUrl: string;
+  width?: number;
+  height?: number;
+  durationSeconds?: number;
+  publishedAt?: string;
 }
