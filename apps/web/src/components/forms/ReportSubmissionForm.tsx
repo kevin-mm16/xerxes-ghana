@@ -1,6 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  Alert,
+  Button,
+  Field,
+  Icon,
+  Input,
+  Progress,
+  SectionLabel,
+  Textarea,
+  UploadZone,
+} from "@/components/ui";
 import { useLocationCoverage } from "@/hooks/useLocationCoverage";
 import { submitObservation } from "@/services/api";
 import type {
@@ -11,11 +22,13 @@ import type {
 import {
   createUploadIntent,
   getUploadStatus,
-  mediaFailureMessage,
   uploadEvidence,
   validateEvidenceFile,
 } from "@/services/uploads";
 import { LocationPicker } from "./LocationPicker";
+import { ContributionSteps, contributionSteps } from "./ContributionSteps";
+import { ContributionReview } from "./ContributionReview";
+import { PrivateSubmissionReceipt } from "./PrivateSubmissionReceipt";
 
 export function ReportSubmissionForm() {
   const location = useLocationCoverage();
@@ -37,10 +50,24 @@ export function ReportSubmissionForm() {
   const [mediaStatus, setMediaStatus] = useState<UploadStatus>();
   const [statusMessage, setStatusMessage] = useState("");
   const [pollAttempt, setPollAttempt] = useState(0);
+  const [step, setStep] = useState(0);
   const upload = useRef<
     { intent: UploadIntent; status?: UploadStatus } | undefined
   >(undefined);
-  const fileInput = useRef<HTMLInputElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const previousStep = useRef(step);
+  const errorMessage = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (previousStep.current !== step) {
+      heading.current?.focus();
+      previousStep.current = step;
+    }
+  }, [step]);
+
+  useEffect(() => {
+    if (error) errorMessage.current?.focus();
+  }, [error]);
 
   useEffect(() => {
     if (!receipt || !upload.current) return;
@@ -100,36 +127,78 @@ export function ReportSubmissionForm() {
       }
     }
   }
+
+  function moveTo(next: number) {
+    setError("");
+    setStep(next);
+  }
+
+  function locationError() {
+    if (!location.state.capture && !manualLocation.trim())
+      return "Choose a location or describe an approximate area.";
+    if (location.state.capture && location.state.status !== "complete")
+      return "Complete the coverage check before submitting.";
+    return "";
+  }
+
+  function detailsError() {
+    if (!description.trim()) return "Describe what you observed.";
+    if (!observedDate) return "Choose the observation date.";
+    if (observedDate > new Date().toISOString().slice(0, 10))
+      return "Choose today or an earlier observation date.";
+    return "";
+  }
+
+  function evidenceIsValid() {
+    if (!file) return true;
+    try {
+      validateEvidenceFile(file);
+      return true;
+    } catch (reason) {
+      setFileError((reason as Error).message);
+      return false;
+    }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    if (!location.state.capture && !manualLocation.trim()) {
-      setError("Choose a location or describe an approximate area.");
+    if (step < 3) {
+      const message =
+        step === 0 ? locationError() : step === 2 ? detailsError() : "";
+      if (message) {
+        setError(message);
+        return;
+      }
+      if (step === 1 && !evidenceIsValid()) {
+        setError(
+          "Choose a supported file or remove the attachment to continue.",
+        );
+        return;
+      }
+      moveTo(step + 1);
       return;
     }
-    if (location.state.capture && location.state.status !== "complete") {
-      setError("Complete the coverage check before submitting.");
+    const invalidLocation = locationError();
+    if (invalidLocation) {
+      setStep(0);
+      setError(invalidLocation);
       return;
     }
-    if (!description.trim()) {
-      setError("Describe what you observed.");
+    if (!evidenceIsValid()) {
+      setStep(1);
+      setError("Choose a supported file or remove the attachment to continue.");
       return;
     }
-    if (!observedDate) {
-      setError("Choose the observation date.");
+    const invalidDetails = detailsError();
+    if (invalidDetails) {
+      setStep(2);
+      setError(invalidDetails);
       return;
     }
     if (!consent) {
       setError("Agree to private storage and review before submitting.");
       return;
-    }
-    if (file) {
-      try {
-        validateEvidenceFile(file);
-      } catch (reason) {
-        setFileError((reason as Error).message);
-        return;
-      }
     }
     setBusy(true);
     try {
@@ -186,197 +255,235 @@ export function ReportSubmissionForm() {
   }
   if (receipt)
     return (
-      <div
-        role="status"
-        className="mx-auto max-w-2xl rounded-2xl border border-line bg-white p-6 shadow-card"
-      >
-        <h2 className="text-xl font-bold">Saved for private review</h2>
-        <p className="mt-3 text-sm text-muted">
-          Your observation is pending review. Nothing has been published.
-        </p>
-        {mediaStatus && (
-          <div
-            className="mt-4 rounded-xl bg-forest-50 p-3 text-sm"
-            data-testid="media-processing-status"
-          >
-            {mediaStatus.processingStatus === "review_ready"
-              ? "Your file has been processed and is ready for private review."
-              : ["failed", "expired"].includes(mediaStatus.processingStatus)
-                ? mediaFailureMessage(mediaStatus)
-                : "Your file is stored privately and is being prepared for review."}
-          </div>
-        )}
-        {statusMessage && (
-          <p className="mt-3 text-sm text-muted">
-            {statusMessage}{" "}
-            <button
-              type="button"
-              className="font-semibold underline"
-              onClick={() => setPollAttempt((attempt) => attempt + 1)}
-            >
-              Check processing status
-            </button>
-          </p>
-        )}
-        <p className="mt-3 break-all font-mono text-xs">
-          Reference: {receipt.id}
-        </p>
-        <p className="mt-2 text-xs text-muted">
-          Keep this reference. Public lookup becomes available only if a
-          sanitized record is approved.
-        </p>
-      </div>
+      <PrivateSubmissionReceipt
+        receipt={receipt}
+        mediaStatus={mediaStatus}
+        statusMessage={statusMessage}
+        onCheck={() => setPollAttempt((attempt) => attempt + 1)}
+      />
     );
   const blocked =
     busy ||
     location.state.status === "locating" ||
     location.state.status === "checking";
+  const fileStored = Boolean(
+    upload.current?.status &&
+      !["failed", "expired"].includes(upload.current.status.processingStatus),
+  );
   return (
-    <form onSubmit={submit} noValidate className="mx-auto max-w-2xl space-y-4">
-      <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-950">
-        Contribute only when safe. Do not approach or confront people to collect
-        evidence.
-      </p>
-      <fieldset disabled={busy} className="space-y-4">
-        <section className="rounded-2xl border border-line bg-white p-5 shadow-card">
-          <h2 className="mb-4 font-bold">1 - Location</h2>
-          <LocationPicker
-            state={location.state}
-            onLocate={() => {
-              setManualLocation("");
-              location.locate();
-            }}
-            onReset={location.reset}
-            manualLocation={manualLocation}
-            onManualChange={setManualLocation}
-          />
-        </section>
-        <section className="rounded-2xl border border-line bg-white p-5 shadow-card">
-          <h2 className="font-bold">2 - Evidence</h2>
-          <p className="mt-2 text-sm text-muted">
-            Attach one image or video, or submit details only. Images: JPEG,
-            PNG, or WebP up to 10 MB. Videos: MP4 or MOV up to 50 MB and 2
-            minutes.
+    <form
+      onSubmit={submit}
+      noValidate
+      className="mx-auto max-w-3xl"
+      aria-label="Contribute an observation"
+      aria-busy={busy}
+    >
+      <ContributionSteps current={step} disabled={blocked} onBack={moveTo} />
+      <div className="mt-7 flex items-center gap-2 text-xs leading-5 text-muted">
+        <Icon name="alert" className="h-4 w-4 shrink-0 text-earth" />
+        <p>
+          Contribute only when safe. Do not approach or confront people to
+          collect evidence.
+        </p>
+      </div>
+      <fieldset disabled={busy} className="min-w-0">
+        <div className="pb-7 pt-8 sm:pt-10">
+          <SectionLabel>
+            Step {step + 1} of 4 · {contributionSteps[step]}
+          </SectionLabel>
+          <h2
+            ref={heading}
+            tabIndex={-1}
+            className="mt-3 text-xl font-semibold tracking-tight outline-none sm:text-2xl"
+          >
+            {
+              [
+                "Where did you observe this?",
+                "Add supporting evidence",
+                "Describe what you observed",
+                "Review your observation",
+              ][step]
+            }
+          </h2>
+          <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+            {
+              [
+                "Use your current position or describe an approximate area. Your location is used for private coverage review.",
+                fileStored
+                  ? "Your file is stored privately. Keep it attached, choose a replacement, or continue with details only."
+                  : "Attach one image or video, or continue with details only. Your file stays on this device until you consent and submit.",
+                "Share what you saw, where useful, and when. Keep the description factual and leave out personal identifiers.",
+                "Check the details below before sending them for private review. Nothing is published automatically.",
+              ][step]
+            }
           </p>
-          <label className="mt-4 block text-sm font-semibold">
-            Image or video (optional)
-            <input
-              ref={fileInput}
-              type="file"
+        </div>
+        {step === 0 && (
+          <section aria-label="Observation location" className="pb-5">
+            <LocationPicker
+              state={location.state}
+              onLocate={() => {
+                setManualLocation("");
+                location.locate();
+              }}
+              onReset={location.reset}
+              manualLocation={manualLocation}
+              onManualChange={setManualLocation}
+            />
+          </section>
+        )}
+        {step === 1 && (
+          <section aria-label="Supporting evidence" className="space-y-5 pb-5">
+            <UploadZone
+              file={file}
+              onFile={chooseFile}
+              onError={setFileError}
+              error={fileError}
+              disabled={busy}
               accept=".jpg,.jpeg,.png,.webp,.mp4,.mov,image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
-              className="mt-2 block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-forest-50 file:px-3 file:py-2 file:font-semibold"
-              onChange={(event) => chooseFile(event.target.files?.[0])}
             />
-          </label>
-          {file && (
-            <div className="mt-3 flex items-start justify-between gap-3 rounded-xl bg-paper p-3 text-sm">
-              <span className="min-w-0 break-all">
-                {file.name}{" "}
-                <span className="text-muted">
-                  ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                </span>
-              </span>
-              <button
-                type="button"
-                className="shrink-0 font-semibold underline"
-                onClick={() => {
-                  chooseFile();
-                  if (fileInput.current) fileInput.current.value = "";
-                }}
-              >
-                Remove file
-              </button>
-            </div>
-          )}
-          {fileError && (
-            <p role="alert" className="mt-2 text-sm text-alert">
-              {fileError}
+            <p className="text-xs leading-6 text-muted">
+              Images: JPEG, PNG or WebP up to 10 MB. Videos: MP4 or MOV up to 50
+              MB and 2 minutes.
             </p>
-          )}
-          <p className="mt-3 text-xs leading-5 text-muted">
-            Files upload only when you consent and submit. Originals and
-            processed copies stay private. Files may contain identifying faces,
-            voices or landmarks; preparing a review copy does not make it safe
-            for publication.
-          </p>
-        </section>
-        <section className="space-y-4 rounded-2xl border border-line bg-white p-5 shadow-card">
-          <h2 className="font-bold">3 - Context</h2>
-          <label className="block text-sm font-semibold">
-            Title (optional)
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              maxLength={160}
-              className="mt-2 h-11 w-full rounded-xl border border-line px-3"
+            <Alert tone="neutral" title="Evidence remains private">
+              Originals and processed copies stay private. Files may contain
+              identifying faces, voices or landmarks. Preparing a review copy
+              does not make it safe for publication.
+            </Alert>
+          </section>
+        )}
+        {step === 2 && (
+          <section aria-label="Observation details" className="space-y-6 pb-5">
+            <Field
+              label="Title (optional)"
+              help="A short description of the observation."
+            >
+              <Input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                maxLength={160}
+              />
+            </Field>
+            <Field
+              label="What did you observe?"
+              required
+              help="Describe visible activity or environmental changes. Avoid names, contact details and speculation."
+            >
+              <Textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                maxLength={5000}
+                rows={5}
+                required
+                aria-invalid={Boolean(error && !description.trim())}
+                aria-describedby={
+                  error && !description.trim()
+                    ? "contribution-error"
+                    : undefined
+                }
+              />
+            </Field>
+            <Field label="Date observed" required>
+              <Input
+                type="date"
+                required
+                value={observedDate}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(event) => setObservedDate(event.target.value)}
+                className="sm:max-w-56"
+                aria-invalid={Boolean(
+                  error &&
+                    (!observedDate ||
+                      observedDate > new Date().toISOString().slice(0, 10)),
+                )}
+              />
+            </Field>
+          </section>
+        )}
+        {step === 3 && (
+          <section aria-label="Review and consent" className="space-y-7 pb-5">
+            <ContributionReview
+              title={title}
+              description={description}
+              observedDate={observedDate}
+              manualLocation={manualLocation}
+              capture={location.state.capture}
+              file={file}
+              fileUploaded={fileStored}
+              onEdit={moveTo}
             />
-          </label>
-          <label className="block text-sm font-semibold">
-            What did you observe?
-            <textarea
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              maxLength={5000}
-              className="mt-2 min-h-28 w-full rounded-xl border border-line p-3"
-            />
-          </label>
-          <label className="block text-sm font-semibold">
-            Date observed
-            <input
-              type="date"
-              value={observedDate}
-              max={new Date().toISOString().slice(0, 10)}
-              onChange={(event) => setObservedDate(event.target.value)}
-              className="mt-2 block h-11 rounded-xl border border-line px-3"
-            />
-          </label>
-        </section>
-        <section className="rounded-2xl border border-line bg-white p-5 shadow-card">
-          <h2 className="font-bold">4 - Privacy and consent</h2>
-          <p className="mt-2 text-sm text-muted">
-            No name, email, or phone is requested. This does not guarantee
-            anonymity. Avoid personal identifiers in your description.
-          </p>
-          <label className="mt-4 flex items-start gap-3 text-sm">
-            <input
-              type="checkbox"
-              checked={consent}
-              onChange={(event) => setConsent(event.target.checked)}
-              className="mt-1 h-4 w-4 shrink-0"
-            />
-            I agree to store these details, the supplied location, and any
-            attached file for private processing and review.
-          </label>
-        </section>
+            <div>
+              <h3 className="text-sm font-semibold">
+                Private storage and review
+              </h3>
+              <p className="mt-2 text-sm leading-7 text-muted">
+                No name, email or phone is requested. This does not guarantee
+                anonymity. The supplied location and any evidence are held
+                privately for review.
+              </p>
+            </div>
+            <label className="flex cursor-pointer items-start gap-3 border-y border-line py-5 text-sm leading-6">
+              <input
+                type="checkbox"
+                required
+                checked={consent}
+                onChange={(event) => setConsent(event.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 accent-forest-600"
+                aria-invalid={Boolean(error && !consent)}
+                aria-describedby={
+                  error && !consent ? "contribution-error" : undefined
+                }
+              />
+              I agree to store these details, the supplied location, and any
+              attached file for private processing and review.
+            </label>
+          </section>
+        )}
       </fieldset>
       {error && (
-        <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-alert">
-          {error}
-        </p>
+        <div
+          id="contribution-error"
+          ref={errorMessage}
+          tabIndex={-1}
+          className="mb-5 outline-none"
+        >
+          <Alert tone="red">{error}</Alert>
+        </div>
       )}
-      {busy && file && (
-        <div role="status" className="rounded-xl bg-white p-3 text-sm">
-          {phase}
-          {progress !== undefined && (
-            <>
-              <span className="ml-2">{progress}%</span>
-              <progress
-                aria-label="Private upload progress"
-                className="mt-2 block h-2 w-full"
-                value={progress}
-                max={100}
-              />
-            </>
+      {busy && (
+        <div role="status" className="mb-6 text-sm">
+          <p className="mb-3">{phase}</p>
+          {file && (
+            <Progress value={progress} label="Private upload progress" />
           )}
         </div>
       )}
-      <button
-        type="submit"
-        disabled={blocked}
-        className="w-full rounded-xl bg-forest-800 px-5 py-3 font-bold text-white disabled:opacity-60"
-      >
-        {busy ? phase || "Saving..." : "Submit observation"}
-      </button>
+      <div className="mt-4 flex flex-col-reverse gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
+        {step > 0 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={blocked}
+            onClick={() => moveTo(step - 1)}
+          >
+            <Icon name="arrow-left" className="h-4 w-4" />
+            Back
+          </Button>
+        ) : (
+          <p className="text-center text-xs text-muted sm:text-left">
+            Your contribution is reviewed privately.
+          </p>
+        )}
+        <Button type="submit" disabled={blocked} className="w-full sm:w-auto">
+          {busy
+            ? "Submitting…"
+            : step === 3
+              ? "Submit observation"
+              : `Continue to ${contributionSteps[step + 1].toLowerCase()}`}
+          {!busy && step < 3 && <Icon name="arrow-right" className="h-4 w-4" />}
+        </Button>
+      </div>
     </form>
   );
 }

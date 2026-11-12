@@ -44,7 +44,9 @@ describe("contribution", () => {
     });
     render(<ReportSubmissionForm />);
     expect(gps).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Submit observation" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue to evidence" }),
+    );
     expect(await screen.findByRole("alert")).toHaveProperty(
       "textContent",
       "Choose a location or describe an approximate area.",
@@ -52,14 +54,25 @@ describe("contribution", () => {
     fireEvent.change(screen.getByLabelText("Approximate area or landmark"), {
       target: { value: "Near a public landmark" },
     });
-    fireEvent.change(screen.getByLabelText("What did you observe?"), {
-      target: { value: "Synthetic context" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Submit observation" }));
-    expect(await screen.findByRole("alert")).toHaveProperty(
-      "textContent",
-      "Agree to private storage and review before submitting.",
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue to evidence" }),
     );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue to details" }),
+    );
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "What did you observe?" }),
+      {
+        target: { value: "Synthetic context" },
+      },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Continue to review" }));
+    fireEvent.click(screen.getByRole("button", { name: "Submit observation" }));
+    expect(
+      await screen.findByText(
+        "Agree to private storage and review before submitting.",
+      ),
+    ).toBeTruthy();
     expect(submitObservation).not.toHaveBeenCalled();
   });
   it("sends accuracy, capture timestamp, and source to the server before saving metadata", async () => {
@@ -99,9 +112,18 @@ describe("contribution", () => {
       capturedAt: new Date(timestamp).toISOString(),
       source: "browser-geolocation",
     });
+    await user.click(
+      screen.getByRole("button", { name: "Continue to evidence" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Continue to details" }),
+    );
     await user.type(
-      screen.getByLabelText("What did you observe?"),
+      screen.getByRole("textbox", { name: "What did you observe?" }),
       "Synthetic observation",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Continue to review" }),
     );
     await user.click(screen.getByRole("checkbox"));
     await user.click(
@@ -117,6 +139,100 @@ describe("contribution", () => {
         }),
       ),
     );
+  });
+
+  it("preserves location and details while moving back through the guided steps", async () => {
+    const user = userEvent.setup();
+    render(<ReportSubmissionForm />);
+    fireEvent.change(screen.getByLabelText("Approximate area or landmark"), {
+      target: { value: "Near a public landmark" },
+    });
+    await user.click(
+      screen.getByRole("button", { name: "Continue to evidence" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Add supporting evidence" }),
+    ).toBe(document.activeElement);
+    await user.click(
+      screen.getByRole("button", { name: "Continue to details" }),
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "What did you observe?" }),
+      "A change in the river colour",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Continue to review" }),
+    );
+    expect(screen.getByText("Near a public landmark")).toBeTruthy();
+    expect(screen.getByText("A change in the river colour")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Edit location" }));
+    expect(
+      screen.getByLabelText("Approximate area or landmark"),
+    ).toHaveProperty("value", "Near a public landmark");
+    await user.click(
+      screen.getByRole("button", { name: "Continue to evidence" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Continue to details" }),
+    );
+    expect(
+      screen.getByRole("textbox", { name: "What did you observe?" }),
+    ).toHaveProperty("value", "A change in the river colour");
+    expect(submitObservation).not.toHaveBeenCalled();
+  });
+
+  it("offers a manual fallback when location permission is denied", async () => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: vi.fn((_success, failure) => failure({ code: 1 })),
+      },
+    });
+    render(<ReportSubmissionForm />);
+    fireEvent.click(screen.getByRole("button", { name: /Use my location/ }));
+    await screen.findByText(
+      "Location could not be obtained. Retry or use a manual location.",
+    );
+    fireEvent.change(screen.getByLabelText("Approximate area or landmark"), {
+      target: { value: "Near a river crossing" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue to evidence" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Add supporting evidence" }),
+    ).toBeTruthy();
+    expect(checkCoverage).not.toHaveBeenCalled();
+  });
+
+  it("allows an outside-coverage observation to continue for private review", async () => {
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: vi.fn((success) =>
+          success({
+            coords: { latitude: 9.4, longitude: -0.8, accuracy: 30 },
+            timestamp: Date.now(),
+          }),
+        ),
+      },
+    });
+    vi.mocked(checkCoverage).mockResolvedValue({
+      insideCoverage: false,
+      state: "outside",
+      boundaryAmbiguous: false,
+      matchedRegions: [],
+      nearbyRegions: [],
+    });
+    render(<ReportSubmissionForm />);
+    fireEvent.click(screen.getByRole("button", { name: /Use my location/ }));
+    await screen.findByText("Outside current XERSXES monitoring coverage");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue to evidence" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Add supporting evidence" }),
+    ).toBeTruthy();
   });
 });
 describe("monitoring layers", () => {
