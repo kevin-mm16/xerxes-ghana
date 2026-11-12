@@ -1,10 +1,13 @@
 "use client";
 
-import { CircleMarker, MapContainer, TileLayer, Tooltip } from "react-leaflet";
+import { useMemo, useState } from "react";
+import { CircleMarker, MapContainer, Tooltip } from "react-leaflet";
 import type { LatLngExpression } from "leaflet";
 import type { Coordinates, SeverityLevel } from "@/types";
 import { severityPinColors } from "@/utils/badges";
 import { cn } from "@/utils/cn";
+import { EarthBaseLayer } from "./EarthBaseLayer";
+import type { ImageryStatus } from "@/services/imagery";
 
 interface CoordinateMapPreviewProps {
   coordinates: Coordinates;
@@ -24,13 +27,22 @@ export function CoordinateMapPreview({
   zoom = 10,
   heightClass = "h-56",
   interactive = false,
-  showAttribution = false,
+  showAttribution = true,
   title = "Coordinate map",
 }: CoordinateMapPreviewProps) {
-  const center: LatLngExpression = [coordinates.lat, coordinates.lng];
+  const center = useMemo<LatLngExpression>(
+    () => [coordinates.lat, coordinates.lng],
+    [coordinates.lat, coordinates.lng],
+  );
+  const [imagery, setImagery] = useState<ImageryStatus>();
 
   return (
-    <div className={cn("relative overflow-hidden rounded-2xl border border-line bg-[#dbe7df]", heightClass)}>
+    <div
+      className={cn(
+        "relative overflow-hidden rounded border border-line bg-[#172021]",
+        heightClass,
+      )}
+    >
       <MapContainer
         center={center}
         zoom={zoom}
@@ -42,10 +54,7 @@ export function CoordinateMapPreview({
         attributionControl={showAttribution}
         className="h-full w-full"
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <EarthBaseLayer onStateChange={setImagery} />
         <CircleMarker
           center={center}
           radius={9}
@@ -61,9 +70,17 @@ export function CoordinateMapPreview({
           </Tooltip>
         </CircleMarker>
       </MapContainer>
-      <div className="pointer-events-none absolute left-3 top-3 rounded-lg bg-white/95 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-muted shadow-sm">
+      <div className="pointer-events-none absolute left-2 top-2 rounded border border-line bg-paper/95 px-2 py-1 font-mono text-[9px] font-medium uppercase tracking-[0.1em] text-muted">
         {title}
       </div>
+      {imagery?.state === "unavailable" && (
+        <p
+          role="status"
+          className="absolute bottom-6 left-2 bg-paper px-2 py-1 text-[10px] text-muted"
+        >
+          Satellite imagery unavailable
+        </p>
+      )}
     </div>
   );
 }

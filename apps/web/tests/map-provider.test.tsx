@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { HotspotMap } from "@/components/map/BrowserMaps";
 import { GET } from "../app/api/map-config/route";
+import type { MapCamera } from "@/utils/map-view";
 
 vi.mock("next/dynamic", async () => {
   const { lazy, Suspense } = await import("react");
@@ -17,11 +18,28 @@ vi.mock("next/dynamic", async () => {
   };
 });
 vi.mock("@/components/map/HotspotMap", () => ({
-  HotspotMap: () => <div data-testid="satellite">Satellite fallback</div>,
+  HotspotMap: ({ initialCamera }: { initialCamera?: MapCamera }) => (
+    <div data-testid="satellite" data-camera={JSON.stringify(initialCamera)}>
+      Satellite fallback
+    </div>
+  ),
 }));
 vi.mock("@/components/map/GoogleIntelligenceMap", () => ({
-  GoogleIntelligenceMap: ({ onUnavailable }: { onUnavailable: () => void }) => (
-    <button onClick={onUnavailable}>Google authentication failed</button>
+  GoogleIntelligenceMap: ({
+    onUnavailable,
+    onCameraChange,
+  }: {
+    onUnavailable: () => void;
+    onCameraChange: (camera: MapCamera) => void;
+  }) => (
+    <button
+      onClick={() => {
+        onCameraChange({ center: [9.2, -1.4], zoom: 13 });
+        onUnavailable();
+      }}
+    >
+      Google authentication failed
+    </button>
   ),
 }));
 
@@ -33,12 +51,10 @@ afterEach(() => {
 it("uses satellite fallback when no browser key is configured", async () => {
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        json: async () => ({ googleMapsApiKey: null }),
-      }),
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ googleMapsApiKey: null }),
+    }),
   );
   render(<HotspotMap features={[]} onSelectFeature={vi.fn()} />);
   await screen.findByTestId("satellite");
@@ -54,18 +70,19 @@ it("falls back when configuration cannot be loaded", async () => {
 it("uses Google with a key and falls back on an authentication failure", async () => {
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        json: async () => ({ googleMapsApiKey: "browser-test-key" }),
-      }),
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ googleMapsApiKey: "browser-test-key" }),
+    }),
   );
   render(<HotspotMap features={[]} onSelectFeature={vi.fn()} />);
   fireEvent.click(
     await screen.findByRole("button", { name: /Google authentication failed/ }),
   );
   await waitFor(() => expect(screen.getByTestId("satellite")).toBeTruthy());
+  expect(screen.getByTestId("satellite").getAttribute("data-camera")).toBe(
+    JSON.stringify({ center: [9.2, -1.4], zoom: 13 }),
+  );
 });
 
 it("exposes only the explicitly configured public browser key at runtime", async () => {

@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useMap } from "react-leaflet";
 import { DomEvent } from "leaflet";
 import { MapNavigationPanel } from "./MapNavigationPanel";
-import { ghanaViewBounds } from "@/utils/map-view";
+import { ghanaCountryBounds } from "@/utils/map-view";
 
 export function MapNavigation() {
   const map = useMap();
@@ -18,7 +18,9 @@ export function MapNavigation() {
   return (
     <div ref={container}>
       <MapNavigationPanel
-        onOverview={() => map.fitBounds(ghanaViewBounds, { padding: [24, 24] })}
+        onOverview={() =>
+          map.fitBounds(ghanaCountryBounds, { padding: [40, 48] })
+        }
         onCoordinates={(point) => map.setView([point.lat, point.lng], 16)}
       />
     </div>

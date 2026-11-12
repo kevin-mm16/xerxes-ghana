@@ -1,8 +1,8 @@
 # Map sources and reference geography
 
-The photographic base uses Google Maps Hybrid when a browser key is available. Otherwise it uses Esri World Imagery with the Esri World Boundaries and Places and World Transportation reference layers. The **Town and road labels** control switches Google between `hybrid` and `satellite`, or toggles these Esri reference tiles. Provider labels can include administrative reference lines; the gold district outline overlay is the separately sourced GSS dataset. Provider label coverage varies by location and zoom. This control does not change monitoring data or request device location. Individual place names are labels; they do not imply a measured town perimeter.
+The photographic base uses Google Maps Satellite when a browser key is available, or Esri World Imagery otherwise. The **Town and road labels** control switches Google between `hybrid` and `satellite`, or toggles Esri World Boundaries and Places and World Transportation reference tiles. Labels start off for a quiet national view. Provider labels can include administrative reference lines; the champagne district outline overlay is the separately sourced GSS dataset. Provider label coverage varies by location and zoom. This control does not change monitoring data or request device location. Individual place names are labels; they do not imply a measured town perimeter.
 
-Google loading, authentication, and initial tile timeouts fall back to the existing Esri/Sentinel renderer. This fallback uses its own provider attribution. Both renderers consume the same public GeoJSON domain contract and preserve the camera when toggling overlays, labels, or observation dates. Base imagery acquisition dates vary and are not an environmental time series.
+Google loading, authentication, and initial tile timeouts fall back to the existing Esri/Sentinel renderer. This fallback uses its own provider attribution and restores the last center/zoom. Both renderers consume the same public GeoJSON domain contract and preserve the camera when toggling overlays, labels, or observation dates. Base imagery acquisition dates vary and are not an environmental time series.
 
 ## Google setup
 
@@ -52,7 +52,7 @@ Import is one transaction. Previously imported releases are immutable and repeat
 
 The map requests `layers=boundaries` through the existing `/api/v1/map/features` contract. Bbox and feature limits still apply. Public display geometry uses topology-preserving simplification at 0.0003 degrees and six decimal places to reduce transfer size; analytical consumers should use full database geometry. Simplification is per feature and is not a guarantee that adjacent displayed edges remain identical. Every feature retains source URL, dataset version, source date, region, boundary level, and licence note. The newest imported dataset supplies the reference layer; older releases remain in storage. Selecting an outline opens its district name and provenance.
 
-The district layer and town/road labels are enabled by default so reference geography is visible on first load. The gold-line legend identifies GSS districts. Disable either independently in Layers for an imagery-only view. Reference districts must never be presented as town perimeters, mining concessions, observation locations, or evidence of illegal activity.
+The district-layer preference starts enabled, while district geometry stays hidden below zoom 9 and becomes thin and subdued at closer scales. Town/road labels start off and can be enabled independently in Layers. The initial national fit uses a separate, Public Domain ADM0 display-focus mask; see [Ghana map focus](map-focus.md) for provenance and scale limitations. Reference districts must never be presented as town perimeters, mining concessions, observation locations, or evidence of illegal activity.
 
 ## Local verification
 

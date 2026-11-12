@@ -1,17 +1,16 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import AppLink from "next/link";
+import { Badge, Icon, IconButton, SectionLabel } from "@/components/ui";
 import type { IntelligenceFeature } from "@/types/intelligence";
 import { formatDate } from "@/utils/format";
 
-interface IntelligenceDrawerProps {
-  feature?: IntelligenceFeature;
-  onClose: () => void;
-}
-
 const featureLabels: Record<IntelligenceFeature["type"], string> = {
-  administrative_boundary: "District boundary",
-  coverage_region: "Coverage region",
-  citizen_observation: "Public observation",
-  approved_video: "Approved video",
+  administrative_boundary: "District reference",
+  coverage_region: "Monitoring area",
+  citizen_observation: "Reviewed observation",
+  approved_video: "Reviewed observation",
   ai_candidate: "AI candidate",
   satellite_change: "Satellite change",
 };
@@ -19,149 +18,170 @@ const featureLabels: Record<IntelligenceFeature["type"], string> = {
 export function IntelligenceDrawer({
   feature,
   onClose,
-}: IntelligenceDrawerProps) {
+}: {
+  feature?: IntelligenceFeature;
+  onClose: () => void;
+}) {
+  const panel = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!feature) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const element = panel.current;
+    element?.focus({ preventScroll: true });
+    function escape(event: KeyboardEvent) {
+      if (event.key === "Escape" && !event.defaultPrevented) onClose();
+    }
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("keydown", escape);
+      if (
+        document.activeElement === document.body ||
+        element?.contains(document.activeElement)
+      )
+        previous?.focus();
+    };
+  }, [feature?.id, onClose]);
   if (!feature) return null;
-
-  const confidence =
-    feature.properties.confidence === undefined
-      ? null
-      : `${Math.round(feature.properties.confidence * 100)}%`;
-
+  const p = feature.properties;
+  const reference = feature.type === "administrative_boundary";
+  const locationLabel = reference
+    ? (p.region ?? p.publicLabel)
+    : (p.publicLabel ?? p.region);
+  const observation =
+    feature.type === "citizen_observation" || feature.type === "approved_video";
   return (
-    <aside className="absolute bottom-16 left-4 right-4 z-[650] max-h-[42%] overflow-y-auto rounded-2xl border border-white/70 bg-white/95 p-5 shadow-lift backdrop-blur lg:bottom-20 lg:left-auto lg:right-4 lg:top-20 lg:w-[360px] lg:max-h-none">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-forest-600">
-            {featureLabels[feature.type]}
-          </p>
-          <h2 className="mt-2 text-xl font-bold leading-snug text-ink">
-            {feature.properties.title}
-          </h2>
-        </div>
-        <button
-          type="button"
+    <aside
+      ref={panel}
+      tabIndex={-1}
+      role="region"
+      aria-labelledby="map-details-title"
+      className="absolute bottom-0 left-0 right-0 z-[650] max-h-[48%] overflow-y-auto rounded-t-lg border-t border-line bg-paper p-5 shadow-lift outline-none lg:bottom-9 lg:left-auto lg:right-3 lg:top-16 lg:max-h-none lg:w-[352px] lg:rounded-md lg:border"
+    >
+      <div
+        className="mx-auto mb-4 h-1 w-10 rounded-full bg-line lg:hidden"
+        aria-hidden="true"
+      />
+      <div className="flex items-start justify-between gap-3">
+        <SectionLabel>{featureLabels[feature.type]}</SectionLabel>
+        <IconButton
+          icon="x"
+          label="Close details"
+          variant="ghost"
+          size="sm"
           onClick={onClose}
-          aria-label="Close details"
-          className="rounded-lg border border-line px-2.5 py-1.5 text-sm font-bold text-muted hover:bg-paper"
-        >
-          ×
-        </button>
+          className="-mr-2 -mt-2"
+        />
       </div>
-
-      {feature.properties.publicLabel ? (
-        <p className="mt-3 text-sm leading-6 text-muted">
-          {feature.properties.publicLabel}
+      <h2
+        id="map-details-title"
+        className="mt-3 text-[25px] font-semibold leading-tight tracking-tight text-ink"
+      >
+        {p.title}
+      </h2>
+      {locationLabel && (
+        <p className="mt-2 text-sm leading-6 text-muted">{locationLabel}</p>
+      )}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {reference && <Badge tone="gold">2021 census geography</Badge>}
+        {observation && <Badge tone="green">Public reviewed record</Badge>}
+        {p.isDemo && <Badge tone="amber">Demonstration</Badge>}
+        {feature.type === "ai_candidate" && (
+          <Badge tone="amber">Unconfirmed signal</Badge>
+        )}
+      </div>
+      {p.summary && !reference && (
+        <p className="mt-5 border-t border-line pt-4 text-sm leading-6 text-muted">
+          {p.summary}
         </p>
-      ) : null}
-
-      <div className="mt-4 grid grid-cols-2 gap-3 border-y border-line py-4 text-xs">
-        <div>
-          <span className="block font-bold uppercase tracking-[0.1em] text-faint">
-            Source
-          </span>
-          <span className="mt-1 block font-semibold text-ink">
-            {feature.properties.source}
-          </span>
-        </div>
-        <div>
-          <span className="block font-bold uppercase tracking-[0.1em] text-faint">
-            Area
-          </span>
-          <span className="mt-1 block font-semibold text-ink">
-            {feature.properties.publicLabel ??
-              feature.properties.coverageCode ??
-              "Not specified"}
-          </span>
-        </div>
-        {feature.observedAt ? (
+      )}
+      <dl className="mt-5 space-y-4 border-y border-line py-5 text-sm">
+        {feature.observedAt && (
           <div>
-            <span className="block font-bold uppercase tracking-[0.1em] text-faint">
-              Observed
-            </span>
-            <span className="mt-1 block font-semibold text-ink">
+            <dt className="text-xs text-muted">Observed</dt>
+            <dd className="mt-1 font-medium text-ink">
               {formatDate(feature.observedAt)}
-            </span>
+            </dd>
           </div>
-        ) : null}
-        {confidence ? (
+        )}
+        <div>
+          <dt className="text-xs text-muted">Source</dt>
+          <dd className="mt-1 font-medium text-ink">{p.source}</dd>
+        </div>
+        {p.precisionLevel && (
           <div>
-            <span className="block font-bold uppercase tracking-[0.1em] text-faint">
-              Confidence
-            </span>
-            <span className="mt-1 block font-semibold text-ink">
-              {confidence}
-            </span>
+            <dt className="text-xs text-muted">Public location precision</dt>
+            <dd className="mt-1 text-ink">
+              {p.precisionLevel.replaceAll("_", " ")}
+            </dd>
           </div>
-        ) : null}
-        {feature.properties.status ? (
+        )}
+        {p.coverageCode && (
           <div>
-            <span className="block font-bold uppercase tracking-[0.1em] text-faint">
-              Status
-            </span>
-            <span className="mt-1 block font-semibold text-ink">
-              {feature.properties.status}
-            </span>
+            <dt className="text-xs text-muted">Monitoring area</dt>
+            <dd className="mt-1 font-mono text-xs text-ink">
+              {p.coverageCode}
+            </dd>
           </div>
-        ) : null}
-        {feature.properties.modelVersion ? (
+        )}
+        {p.confidence !== undefined && (
           <div>
-            <span className="block font-bold uppercase tracking-[0.1em] text-faint">
-              Model
-            </span>
-            <span className="mt-1 block font-semibold text-ink">
-              {feature.properties.modelVersion}
-            </span>
+            <dt className="text-xs text-muted">Model confidence</dt>
+            <dd className="mt-1 font-mono text-ink">
+              {Math.round(p.confidence * 100)}%
+            </dd>
           </div>
-        ) : null}
-      </div>
-
-      {feature.properties.isDemo && (
-        <p className="mt-3 text-xs text-amber-900">
-          Demonstration monitoring geometry; not a legal boundary.
+        )}
+        {p.modelVersion && (
+          <div>
+            <dt className="text-xs text-muted">Model version</dt>
+            <dd className="mt-1 font-mono text-xs text-ink">
+              {p.modelVersion}
+            </dd>
+          </div>
+        )}
+      </dl>
+      {reference && (
+        <p className="mt-4 text-xs leading-5 text-muted">
+          District reference, not a town perimeter or mining concession.
+          Displayed edges are simplified; check later changes with GSS.
         </p>
       )}
-      {feature.properties.datasetVersion && (
-        <p className="mt-3 text-xs text-muted">
-          Dataset: {feature.properties.datasetVersion}. Census geography; check
-          with GSS for later changes.
+      {p.isDemo && (
+        <p className="mt-4 text-xs leading-5 text-muted">
+          Demonstration monitoring geometry. It is not a legal or administrative
+          boundary.
         </p>
       )}
-      {feature.properties.sourceUrl && (
+      {feature.type === "ai_candidate" && (
+        <p className="mt-4 text-xs leading-5 text-muted">
+          A signal for review, not a confirmed illegal-mining finding.
+        </p>
+      )}
+      {p.datasetVersion && (
+        <p className="mt-3 break-words text-[10px] leading-5 text-muted">
+          Dataset: {p.datasetVersion}
+        </p>
+      )}
+      {p.sourceUrl && (
         <a
-          className="mt-2 inline-block text-xs font-semibold underline"
-          href={feature.properties.sourceUrl}
+          href={p.sourceUrl}
           target="_blank"
           rel="noreferrer"
+          className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-forest-800 underline underline-offset-4"
         >
           View boundary source
+          <Icon name="chevronRight" className="h-3 w-3" />
         </a>
       )}
-      {feature.properties.coverageCode && (
-        <p className="mt-2 font-mono text-xs">
-          {feature.properties.coverageCode}
-        </p>
-      )}
-      {feature.properties.summary ? (
-        <p className="mt-4 text-sm leading-6 text-muted">
-          {feature.properties.summary}
-        </p>
-      ) : null}
-
-      {feature.type === "ai_candidate" ? (
-        <p className="mt-4 rounded-xl bg-violet-50 p-3 text-xs leading-5 text-violet-950">
-          AI candidates are signals for review, not confirmed illegal-mining
-          findings.
-        </p>
-      ) : null}
-
-      {feature.properties.observationId ? (
+      {p.observationId && (
         <AppLink
-          href={`/reports/${feature.properties.observationId}`}
-          className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-forest-800 px-4 py-2.5 text-sm font-bold text-white hover:bg-forest-600"
+          href={`/reports/${p.observationId}`}
+          className="mt-5 inline-flex min-h-11 w-full items-center justify-between gap-3 rounded border border-forest-800 bg-forest-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-forest-600"
         >
           Open evidence record
+          <Icon name="chevronRight" className="h-4 w-4" />
         </AppLink>
-      ) : null}
+      )}
     </aside>
   );
 }

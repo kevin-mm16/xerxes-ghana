@@ -1,8 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { IntelligenceMapProps } from "./map-props";
+import type { MapCamera } from "@/utils/map-view";
 
 // Leaflet reads browser globals when imported. Keep this boundary at the maps
 // so page headings, content, navigation, and forms can still render on the server.
@@ -10,7 +11,7 @@ function MapLoading() {
   return (
     <p
       role="status"
-      className="rounded-2xl bg-forest-50 p-6 text-sm text-muted"
+      className="flex h-full min-h-64 items-center justify-center bg-[#172021] p-6 text-sm text-white/60"
     >
       Loading map...
     </p>
@@ -42,6 +43,14 @@ export function HotspotMap(props: IntelligenceMapProps) {
   const [key, setKey] = useState<string>();
   const [checked, setChecked] = useState(false);
   const [failed, setFailed] = useState(false);
+  const camera = useRef<MapCamera | undefined>(props.initialCamera);
+  const onCameraChange = useCallback(
+    (next: MapCamera) => {
+      camera.current = next;
+      props.onCameraChange?.(next);
+    },
+    [props.onCameraChange],
+  );
   const unavailable = useCallback(() => setFailed(true), []);
   useEffect(() => {
     let active = true;
@@ -66,6 +75,20 @@ export function HotspotMap(props: IntelligenceMapProps) {
   }, []);
   if (!checked) return <MapLoading />;
   if (key && !failed)
-    return <GoogleMap {...props} apiKey={key} onUnavailable={unavailable} />;
-  return <SatelliteMap {...props} />;
+    return (
+      <GoogleMap
+        {...props}
+        initialCamera={camera.current}
+        onCameraChange={onCameraChange}
+        apiKey={key}
+        onUnavailable={unavailable}
+      />
+    );
+  return (
+    <SatelliteMap
+      {...props}
+      initialCamera={camera.current}
+      onCameraChange={onCameraChange}
+    />
+  );
 }

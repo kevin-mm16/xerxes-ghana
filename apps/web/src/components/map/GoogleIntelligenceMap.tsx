@@ -5,9 +5,30 @@ import {
   loadGoogleMaps,
   onGoogleMapsAuthFailure,
 } from "@/services/google-maps";
-import { ghanaViewBounds, initialMapView } from "@/utils/map-view";
+import {
+  ghanaCountryBounds,
+  ghanaViewBounds,
+  initialMapView,
+} from "@/utils/map-view";
+import {
+  districtZoomTier,
+  featureBounds,
+  focusOpacity,
+  ghanaFocusGeometry,
+  overlayStyle,
+} from "@/utils/map-geometry";
 import { MapNavigationPanel } from "./MapNavigationPanel";
+import { MapSourceStatus } from "./MapSourceStatus";
 import type { IntelligenceMapProps } from "./map-props";
+import type { IntelligenceFeature } from "@/types/intelligence";
+
+const focusId = "xersxes-country-focus";
+const boundsLiteral = (bounds: [[number, number], [number, number]]) => ({
+  south: bounds[0][0],
+  west: bounds[0][1],
+  north: bounds[1][0],
+  east: bounds[1][1],
+});
 
 export function GoogleIntelligenceMap({
   apiKey,
@@ -15,48 +36,68 @@ export function GoogleIntelligenceMap({
   features,
   selectedFeatureId,
   onSelectFeature,
-  showLabels = true,
+  showLabels = false,
   timelineVisible = false,
-  compact = false,
+  initialCamera,
+  onCameraChange,
+  focusFeature,
 }: IntelligenceMapProps & { apiKey: string; onUnavailable: () => void }) {
   const container = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map>();
   const [ready, setReady] = useState(false);
+  const [tier, setTier] = useState(0);
+  const initial = useRef(initialCamera);
   const selection = useRef(onSelectFeature);
   selection.current = onSelectFeature;
+  const cameraChanged = useRef(onCameraChange);
+  cameraChanged.current = onCameraChange;
   const featureLookup = useRef(
-    new globalThis.Map(features.map((feature) => [feature.id, feature])),
+    new globalThis.Map<string, IntelligenceFeature>(),
   );
   featureLookup.current = new globalThis.Map(
     features.map((feature) => [feature.id, feature]),
   );
+  const rendered = useRef(
+    new globalThis.Map<
+      string,
+      { feature: IntelligenceFeature; data: google.maps.Data.Feature[] }
+    >(),
+  );
   useEffect(() => {
     let disposed = false;
     let instance: google.maps.Map | undefined;
-    let idle: google.maps.MapsEventListener | undefined;
-    let click: google.maps.MapsEventListener | undefined;
-    let hover: google.maps.MapsEventListener | undefined;
-    let leave: google.maps.MapsEventListener | undefined;
+    const listeners: google.maps.MapsEventListener[] = [];
     let info: google.maps.InfoWindow | undefined;
-    const timeout = setTimeout(onUnavailable, 20000);
-    const unsubscribe = onGoogleMapsAuthFailure(onUnavailable);
+    function rememberCamera() {
+      const center = instance?.getCenter();
+      const zoom = instance?.getZoom();
+      if (center && zoom !== undefined)
+        cameraChanged.current?.({ center: [center.lat(), center.lng()], zoom });
+    }
+    const unavailable = () => {
+      if (disposed) return;
+      rememberCamera();
+      onUnavailable();
+    };
+    const timeout = setTimeout(unavailable, 20000);
+    const unsubscribe = onGoogleMapsAuthFailure(unavailable);
     loadGoogleMaps(apiKey)
       .then(({ Map, InfoWindow }) => {
         if (disposed || !container.current) return;
-        const [[south, west], [north, east]] = ghanaViewBounds;
+        const camera = initial.current;
         instance = new Map(container.current, {
           center: {
-            lat: initialMapView.center[0],
-            lng: initialMapView.center[1],
+            lat: (camera?.center ?? initialMapView.center)[0],
+            lng: (camera?.center ?? initialMapView.center)[1],
           },
-          zoom: initialMapView.zoom,
+          zoom: camera?.zoom ?? initialMapView.zoom,
           minZoom: 6,
           maxZoom: 19,
           restriction: {
-            latLngBounds: { south, west, north, east },
+            latLngBounds: boundsLiteral(ghanaViewBounds),
             strictBounds: false,
           },
-          mapTypeId: "hybrid",
+          mapTypeId: "satellite",
           disableDefaultUI: true,
           zoomControl: true,
           zoomControlOptions: {
@@ -66,50 +107,77 @@ export function GoogleIntelligenceMap({
           clickableIcons: false,
           gestureHandling: "greedy",
         });
-        idle = google.maps.event.addListenerOnce(
-          instance,
-          "tilesloaded",
-          () => {
+        if (!camera)
+          instance.fitBounds(boundsLiteral(ghanaCountryBounds), {
+            top: 72,
+            bottom: 48,
+            left: 40,
+            right: 40,
+          });
+        instance.data.addGeoJson({
+          type: "Feature",
+          id: focusId,
+          geometry: ghanaFocusGeometry,
+          properties: { focusMask: true },
+        });
+        listeners.push(
+          google.maps.event.addListenerOnce(instance, "tilesloaded", () => {
             clearTimeout(timeout);
             if (!disposed) setReady(true);
-          },
+          }),
+        );
+        listeners.push(
+          instance.addListener("idle", () => {
+            rememberCamera();
+            if (!disposed) setTier(districtZoomTier(instance?.getZoom() ?? 6));
+          }),
         );
         info = new InfoWindow({ disableAutoPan: true });
-        hover = instance.data.addListener(
-          "mouseover",
-          (event: google.maps.Data.MouseEvent) => {
-            const content = document.createElement("span");
-            content.textContent = String(event.feature.getProperty("title"));
-            info?.setContent(content);
-            info?.setPosition(event.latLng);
-            info?.open(instance);
-          },
+        listeners.push(
+          instance.data.addListener(
+            "mouseover",
+            (event: google.maps.Data.MouseEvent) => {
+              if (!featureLookup.current.has(String(event.feature.getId())))
+                return;
+              if (
+                event.feature.getProperty("type") ===
+                  "administrative_boundary" &&
+                (instance?.getZoom() ?? 6) < 13
+              )
+                return;
+              const content = document.createElement("span");
+              content.textContent = String(event.feature.getProperty("title"));
+              info?.setContent(content);
+              info?.setPosition(event.latLng);
+              info?.open(instance);
+            },
+          ),
         );
-        leave = instance.data.addListener("mouseout", () => info?.close());
-        click = instance.data.addListener(
-          "click",
-          (event: google.maps.Data.MouseEvent) => {
-            const feature = featureLookup.current.get(
-              String(event.feature.getId()),
-            );
-            if (feature) selection.current(feature);
-          },
+        listeners.push(
+          instance.data.addListener("mouseout", () => info?.close()),
+        );
+        listeners.push(
+          instance.data.addListener(
+            "click",
+            (event: google.maps.Data.MouseEvent) => {
+              const feature = featureLookup.current.get(
+                String(event.feature.getId()),
+              );
+              if (feature) selection.current(feature);
+            },
+          ),
         );
         setMap(instance);
       })
-      .catch(() => {
-        if (!disposed) onUnavailable();
-      });
+      .catch(unavailable);
     return () => {
       disposed = true;
       clearTimeout(timeout);
       unsubscribe();
-      idle?.remove();
-      click?.remove();
-      hover?.remove();
-      leave?.remove();
+      listeners.forEach((listener) => listener.remove());
       info?.close();
       instance?.data.forEach((feature) => instance?.data.remove(feature));
+      rendered.current.clear();
     };
   }, [apiKey, onUnavailable]);
 
@@ -118,46 +186,76 @@ export function GoogleIntelligenceMap({
   }, [map, showLabels]);
   useEffect(() => {
     if (!map) return;
-    map.data.forEach((feature) => map.data.remove(feature));
+    const current = rendered.current;
+    const desired = new Set(features.map((feature) => feature.id));
+    for (const [id, value] of current)
+      if (!desired.has(id)) {
+        value.data.forEach((feature) => map.data.remove(feature));
+        current.delete(id);
+      }
     for (const feature of features) {
-      map.data.addGeoJson({
+      if (current.get(feature.id)?.feature === feature) continue;
+      current.get(feature.id)?.data.forEach((item) => map.data.remove(item));
+      const data = map.data.addGeoJson({
         type: "Feature",
         id: feature.id,
         geometry: feature.geometry,
         properties: { title: feature.properties.title, type: feature.type },
       });
+      current.set(feature.id, { feature, data });
     }
-    map.data.setStyle((feature) => ({
-      strokeColor:
-        feature.getProperty("type") === "administrative_boundary"
-          ? "#f8df8b"
-          : feature.getProperty("type") === "coverage_region"
-            ? "#00d084"
-            : "#f59e0b",
-      strokeWeight: String(feature.getId()) === selectedFeatureId ? 4 : 2,
-      fillOpacity:
-        feature.getProperty("type") === "administrative_boundary"
-          ? 0.015
-          : 0.08,
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: String(feature.getId()) === selectedFeatureId ? 10 : 7,
-        fillColor: "#17663f",
-        fillOpacity: 0.94,
-        strokeColor: "white",
-        strokeWeight: 2,
-      },
-    }));
-  }, [map, features, selectedFeatureId]);
+  }, [map, features]);
+  useEffect(() => {
+    if (!map) return;
+    map.data.setStyle((feature) => {
+      if (String(feature.getId()) === focusId)
+        return {
+          clickable: false,
+          strokeWeight: 0,
+          fillColor: "#101a1b",
+          fillOpacity: focusOpacity(tier),
+          zIndex: 1,
+        };
+      const type = feature.getProperty("type") as IntelligenceFeature["type"];
+      const selected = String(feature.getId()) === selectedFeatureId;
+      const style = overlayStyle(type, selected, tier);
+      return {
+        visible: type !== "administrative_boundary" || tier > 0,
+        strokeColor: style.color,
+        strokeWeight: style.weight,
+        strokeOpacity: style.opacity,
+        fillColor: style.fillColor,
+        fillOpacity: style.fillOpacity,
+        zIndex: 2,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: selected ? 9 : 6,
+          fillColor: type === "ai_candidate" ? "#8e79ac" : "#346c55",
+          fillOpacity: 1,
+          strokeColor: "#f5f3ed",
+          strokeWeight: selected ? 3 : 1.5,
+        },
+      };
+    });
+  }, [map, selectedFeatureId, tier]);
+  useEffect(() => {
+    if (!map || !focusFeature) return;
+    if (focusFeature.geometry.type === "Point") {
+      const [lng, lat] = focusFeature.geometry.coordinates;
+      map.setCenter({ lat, lng });
+      map.setZoom(14);
+    } else {
+      map.fitBounds(boundsLiteral(featureBounds(focusFeature)), 56);
+      const listener = google.maps.event.addListenerOnce(map, "idle", () => {
+        const zoom = map.getZoom() ?? 9;
+        if (zoom > 13 || zoom < 9) map.setZoom(Math.max(9, Math.min(13, zoom)));
+      });
+      return () => listener.remove();
+    }
+  }, [map, focusFeature]);
 
   return (
-    <div
-      className={
-        compact
-          ? "relative h-[520px] overflow-hidden rounded-3xl"
-          : "relative h-full overflow-hidden"
-      }
-    >
+    <div className="relative h-full overflow-hidden">
       <div
         ref={container}
         className="h-full w-full"
@@ -165,39 +263,24 @@ export function GoogleIntelligenceMap({
       />
       {map && (
         <MapNavigationPanel
-          onOverview={() => {
-            const [[south, west], [north, east]] = ghanaViewBounds;
-            map.fitBounds({ south, west, north, east }, 24);
-          }}
+          onOverview={() =>
+            map.fitBounds(boundsLiteral(ghanaCountryBounds), 40)
+          }
           onCoordinates={(point) => {
             map.setCenter(point);
             map.setZoom(16);
           }}
         />
       )}
-      <div
-        role="status"
-        data-provider="google"
-        className={`absolute left-3 z-[450] max-w-[70%] rounded-lg bg-black/70 px-3 py-1.5 text-[10px] text-white ${timelineVisible ? "bottom-16" : "bottom-10"}`}
-      >
-        {features.some(
-          (feature) => feature.type === "administrative_boundary",
-        ) && (
-          <div
-            className="mb-1 flex items-center gap-2 text-[11px] font-semibold"
-            data-testid="district-legend"
-          >
-            <span
-              aria-hidden="true"
-              className="w-5 border-t-2 border-[#f8df8b]"
-            />
-            GSS district boundaries | 2021 census
-          </div>
-        )}
-        {ready
-          ? `Google ${showLabels ? "Hybrid" : "Satellite"} | imagery dates vary`
-          : "Loading Google satellite imagery..."}
-      </div>
+      <MapSourceStatus
+        provider="google"
+        timelineVisible={timelineVisible}
+        label={
+          ready
+            ? `Google ${showLabels ? "Hybrid" : "Satellite"} · imagery dates vary`
+            : "Loading Google satellite imagery…"
+        }
+      />
     </div>
   );
 }

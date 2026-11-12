@@ -1,74 +1,140 @@
 "use client";
 
+import { SectionLabel } from "@/components/ui";
 import type { MapLayerKey, MapLayerState } from "@/types/intelligence";
+
 interface Props {
   layers: MapLayerState;
   onChange: (next: MapLayerState) => void;
   counts: Record<MapLayerKey, number>;
   showLabels: boolean;
   onLabelsChange: (value: boolean) => void;
+  loading?: boolean;
+  unavailable?: boolean;
 }
-const labels: Array<{ key: MapLayerKey; label: string }> = [
-  { key: "boundaries", label: "GSS district boundaries" },
-  { key: "coverage", label: "Monitoring areas" },
-  { key: "observations", label: "Reviewed observations" },
-  { key: "ai", label: "AI candidates" },
-  { key: "satellite", label: "Analysis results" },
+const groups: Array<{
+  title: string;
+  items: Array<{ key: MapLayerKey; label: string; help: string }>;
+}> = [
+  {
+    title: "Reference",
+    items: [
+      {
+        key: "boundaries",
+        label: "GSS district boundaries",
+        help: "2021 census · visible from zoom 9",
+      },
+    ],
+  },
+  {
+    title: "Monitoring",
+    items: [
+      {
+        key: "coverage",
+        label: "Monitoring areas",
+        help: "XERSXES coverage · demonstration geometry",
+      },
+      {
+        key: "observations",
+        label: "Reviewed observations",
+        help: "Public records only",
+      },
+    ],
+  },
+  {
+    title: "Analysis",
+    items: [
+      {
+        key: "satellite",
+        label: "Satellite change",
+        help: "Published environmental analysis",
+      },
+      {
+        key: "ai",
+        label: "AI candidates",
+        help: "Model signals requiring review",
+      },
+    ],
+  },
 ];
+
 export function MapLayerControl({
   layers,
   onChange,
   counts,
   showLabels,
   onLabelsChange,
+  loading = false,
+  unavailable = false,
 }: Props) {
+  function layerHelp(key: MapLayerKey, help: string) {
+    if (counts[key] > 0) return help;
+    if (loading) return "Loading public geography…";
+    if (unavailable) return "Public data unavailable";
+    if (key === "ai") return "No model results available";
+    if (key === "satellite") return "No analysis results available";
+    return "No public records available";
+  }
   return (
-    <div
-      id="map-layers"
-      className="max-h-[42dvh] w-60 overflow-y-auto rounded-2xl border border-line bg-white/95 p-3 shadow-lift backdrop-blur"
-    >
-      <h2 className="px-2 text-xs font-bold uppercase tracking-wide text-muted">
-        Map layers
-      </h2>
-      <p className="px-2 pt-2 text-xs text-muted">
-        Satellite imagery is always the base view. Place names do not define
-        town boundaries.
-      </p>
-      <label className="mt-1 flex items-center gap-3 rounded-xl border-b border-line p-2 text-sm">
-        <input
-          type="checkbox"
-          checked={showLabels}
-          onChange={() => onLabelsChange(!showLabels)}
-          className="h-4 w-4"
-        />
-        <span>Town and road labels</span>
-      </label>
-      <p className="px-2 text-[11px] text-muted">
-        Provider labels can include reference lines. Gold district outlines use
-        GSS data.
-      </p>
-      {labels.map(({ key, label }) => (
-        <label
-          key={key}
-          className="mt-1 flex items-center gap-3 rounded-xl p-2 text-sm"
-        >
+    <div className="space-y-5">
+      <div>
+        <SectionLabel>Map</SectionLabel>
+        <p className="mb-3 mt-2 text-xs leading-5 text-muted">
+          Satellite imagery is the base view. Acquisition dates vary.
+        </p>
+        <label className="flex cursor-pointer items-start gap-3 text-sm text-ink">
           <input
             type="checkbox"
-            checked={layers[key]}
-            disabled={counts[key] === 0}
-            onChange={() => onChange({ ...layers, [key]: !layers[key] })}
-            className="h-4 w-4"
+            checked={showLabels}
+            onChange={() => onLabelsChange(!showLabels)}
+            className="mt-0.5 h-4 w-4 accent-forest-600"
           />
-          <span className="flex-1">{label}</span>
-          <span className="text-xs text-muted">{counts[key]}</span>
+          <span>
+            <span className="block font-medium">Town and road labels</span>
+            <span className="mt-1 block text-xs leading-5 text-muted">
+              Provider labels may include reference lines. Names do not define
+              town boundaries.
+            </span>
+          </span>
         </label>
+      </div>
+      {groups.map((group) => (
+        <fieldset key={group.title} className="border-t border-line pt-4">
+          <legend className="sr-only">{group.title}</legend>
+          <SectionLabel>{group.title}</SectionLabel>
+          <div className="mt-3 space-y-4">
+            {group.items.map(({ key, label, help }) => (
+              <label
+                key={key}
+                className={`flex items-start gap-3 text-sm ${counts[key] === 0 ? "cursor-not-allowed text-muted" : "cursor-pointer text-ink"}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={layers[key]}
+                  disabled={counts[key] === 0}
+                  onChange={() => onChange({ ...layers, [key]: !layers[key] })}
+                  className="mt-0.5 h-4 w-4 accent-forest-600"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{label}</span>
+                  <span className="mt-1 block text-xs leading-5 text-muted">
+                    {layerHelp(key, help)}
+                  </span>
+                </span>
+                {counts[key] > 0 && (
+                  <span className="font-mono text-[11px] tabular-nums text-muted">
+                    {counts[key]}
+                  </span>
+                )}
+              </label>
+            ))}
+          </div>
+        </fieldset>
       ))}
-      {counts.boundaries > 0 && (
-        <p className="px-2 pt-2 text-xs text-muted">
-          District outlines: GSS 2021 census geography. Select an outline for
-          its source.
-        </p>
-      )}
+      <p className="border-t border-line pt-3 text-[11px] leading-5 text-muted">
+        Reference geography is separate from monitoring eligibility and evidence
+        of environmental activity.
+      </p>
     </div>
   );
 }

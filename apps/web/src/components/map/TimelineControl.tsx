@@ -12,7 +12,7 @@ export function TimelineControl({
   onSelect,
 }: TimelineControlProps) {
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/95 px-4 py-3 shadow-lift backdrop-blur">
+    <div className="rounded border border-line bg-paper/95 px-3 py-2 shadow-lift">
       <div className="flex items-center gap-3">
         <span className="hidden text-[11px] font-bold uppercase tracking-[0.14em] text-faint sm:inline">
           Observations
@@ -24,8 +24,8 @@ export function TimelineControl({
             aria-pressed={selectedYear === undefined}
             className={
               selectedYear === undefined
-                ? "rounded-lg bg-forest-800 px-3 py-1.5 text-xs font-bold text-white"
-                : "rounded-lg px-3 py-1.5 text-xs font-semibold text-muted"
+                ? "rounded bg-forest-800 px-3 py-2 text-xs font-medium text-white"
+                : "rounded px-3 py-2 text-xs font-medium text-muted"
             }
           >
             All
@@ -38,8 +38,8 @@ export function TimelineControl({
               aria-pressed={selectedYear === year}
               className={
                 year === selectedYear
-                  ? "rounded-lg bg-forest-800 px-3 py-1.5 text-xs font-bold text-white"
-                  : "rounded-lg px-3 py-1.5 text-xs font-semibold text-muted hover:bg-paper"
+                  ? "rounded bg-forest-800 px-3 py-2 text-xs font-medium text-white"
+                  : "rounded px-3 py-2 text-xs font-medium text-muted hover:bg-white"
               }
             >
               {year}

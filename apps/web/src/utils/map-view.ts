@@ -3,10 +3,20 @@ export const ghanaViewBounds: [[number, number], [number, number]] = [
   [4.1, -3.6],
   [11.5, 1.6],
 ];
+// Full ADM0 display outline bounds. Kept separate from the looser pan limits.
+export const ghanaCountryBounds: [[number, number], [number, number]] = [
+  [4.73672, -3.25542],
+  [11.1733, 1.19178],
+];
 export const initialMapView = {
-  center: [6.1, -1.65] as [number, number],
-  zoom: 11,
+  center: [7.95501, -1.03182] as [number, number],
+  zoom: 6,
 };
+
+export interface MapCamera {
+  center: [number, number];
+  zoom: number;
+}
 
 export function parseMapCoordinates(latitude: string, longitude: string) {
   const lat = Number(latitude.trim());
