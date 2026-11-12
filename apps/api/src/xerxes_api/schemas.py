@@ -121,6 +121,18 @@ class MediaStatus(ApiModel):
     error_code: str | None = None
 
 
+class PublicMedia(ApiModel):
+    id: UUID
+    media_kind: Literal["image", "video"]
+    mime_type: Literal["image/jpeg", "video/mp4"]
+    width: int | None = None
+    height: int | None = None
+    duration_seconds: float | None = None
+    url: str
+    thumbnail_url: str
+    published_at: datetime | None = None
+
+
 class PublicObservation(ApiModel):
     id: UUID
     title: str
@@ -130,6 +142,7 @@ class PublicObservation(ApiModel):
     public_location: dict
     public_label: str
     precision_level: str
+    media: PublicMedia | None = None
 
 
 class FeatureProperties(ApiModel):
@@ -164,6 +177,7 @@ class FeatureProperties(ApiModel):
     license_note: str | None = None
     region: str | None = None
     source_date: str | None = None
+    media: PublicMedia | None = None
 
 
 class GeoFeature(ApiModel):

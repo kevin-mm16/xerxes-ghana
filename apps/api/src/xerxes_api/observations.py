@@ -11,15 +11,21 @@ from sqlalchemy import text
 from xerxes_api.coverage import coverage_check
 from xerxes_api.db import SessionDep
 from xerxes_api.models import CaptureLocation, EvidenceMedia, Observation
+from xerxes_api.public_delivery import media_representation
 from xerxes_api.schemas import ObservationInput, PublicObservation, SubmissionReceipt
 from xerxes_api.uploads import ACCEPTED_UPLOAD_STATES, authorized_media, media_status
 
 router = APIRouter(prefix="/api/v1/observations", tags=["observations"])
 PUBLIC_SELECT = """
     SELECT o.id, o.observed_at, p.title, p.description, p.label, p.precision_level,
-           ST_AsGeoJSON(p.geometry) AS geojson
+           ST_AsGeoJSON(p.geometry) AS geojson,
+           m.id media_id,m.media_kind,m.mime_type media_mime,m.width media_width,
+           m.height media_height,m.duration_seconds media_duration,m.published_at media_published_at
     FROM observations o JOIN public_locations p ON p.observation_id=o.id
-    WHERE o.status='approved'
+    JOIN observation_reviews r ON r.observation_id=o.id
+    LEFT JOIN published_media m ON m.observation_id=o.id AND m.processing_status='ready'
+      AND r.media_decision='publish' AND r.identifiers_clear=true
+    WHERE o.status='approved' AND r.review_status='approved' AND r.publication_status='published'
 """
 
 
@@ -44,6 +50,7 @@ def public_observation(row):
         public_location=json.loads(row["geojson"]),
         public_label=row["label"],
         precision_level=row["precision_level"],
+        media=media_representation(row),
     )
 
 
@@ -119,7 +126,7 @@ def create_observation(body: ObservationInput, session: SessionDep):
     return receipt(session, observation)
 
 
-@router.get("/{observation_id}", response_model=PublicObservation)
+@router.get("/{observation_id}", response_model=PublicObservation, response_model_exclude_none=True)
 def get_observation(observation_id: UUID, session: SessionDep):
     row = (
         session.execute(text(PUBLIC_SELECT + " AND o.id=:id"), {"id": observation_id})

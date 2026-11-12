@@ -20,6 +20,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from xerxes_api import auth_models, moderation_models, public_media_models  # noqa: F401
 from xerxes_api.db import Base
 
 

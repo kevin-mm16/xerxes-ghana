@@ -1,13 +1,9 @@
 """Explicit local publication helper; there is no unauthenticated moderation API."""
 
-import argparse
-import os
 from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-
-from xerxes_api.db import get_engine
 
 
 def publish_sanitized(session: Session, observation_id: UUID, title: str, description: str):
@@ -43,18 +39,22 @@ def publish_sanitized(session: Session, observation_id: UUID, title: str, descri
     session.execute(
         text("UPDATE observations SET status='approved' WHERE id=:id"), {"id": observation_id}
     )
+    # Compatibility for trusted local metadata-only fixtures. HTTP publication
+    # uses the authenticated review service and requires reviewed activity geography.
+    session.execute(
+        text("""INSERT INTO observation_reviews
+      (observation_id,review_status,publication_status,sanitized_title,sanitized_summary,
+       media_decision,public_location_policy,summary_reviewed,location_reviewed,published_at)
+      VALUES (:id,'approved','published',:title,:description,'exclude','coverage_region',true,true,now())
+      ON CONFLICT(observation_id) DO UPDATE SET review_status='approved',publication_status='published',
+        sanitized_title=EXCLUDED.sanitized_title,sanitized_summary=EXCLUDED.sanitized_summary,
+        media_decision='exclude',summary_reviewed=true,location_reviewed=true,published_at=now()"""),
+        {"id": observation_id, "title": title.strip(), "description": description.strip()},
+    )
     session.flush()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("observation_id", type=UUID)
-    parser.add_argument("--title", required=True)
-    parser.add_argument("--description", required=True)
-    parser.add_argument("--acknowledge-sanitized", action="store_true", required=True)
-    args = parser.parse_args()
-    if os.environ.get("APP_ENV") != "development":
-        raise RuntimeError("This local publication helper is restricted to development")
-    with Session(get_engine()) as session, session.begin():
-        publish_sanitized(session, args.observation_id, args.title, args.description)
-    print("Sanitized observation published using its monitoring-region polygon.")
+    raise SystemExit(
+        "Use the authenticated operations console for publication; legacy CLI is retired."
+    )

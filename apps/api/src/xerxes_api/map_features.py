@@ -11,6 +11,7 @@ from xerxes_api.boundaries import boundary_features
 from xerxes_api.coverage import coverage_features
 from xerxes_api.db import SessionDep
 from xerxes_api.observations import PUBLIC_SELECT
+from xerxes_api.public_delivery import media_representation
 from xerxes_api.schemas import FeatureCollection, FeatureProperties, GeoFeature, parse_bbox
 
 router = APIRouter(prefix="/api/v1/map", tags=["map"])
@@ -65,7 +66,9 @@ def map_features(
                     id=row["id"],
                     geometry=json.loads(row["geojson"]),
                     properties=FeatureProperties(
-                        feature_type="citizen_observation",
+                        feature_type="approved_video"
+                        if row["media_id"] and row["media_kind"] == "video"
+                        else "citizen_observation",
                         layer="observations",
                         title=row["title"],
                         source="Human-reviewed observation",
@@ -76,6 +79,7 @@ def map_features(
                         observation_id=row["id"],
                         observed_at=row["observed_at"].date().isoformat(),
                         review_state="approved",
+                        media=media_representation(row),
                     ),
                 )
             )
