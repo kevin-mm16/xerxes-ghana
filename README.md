@@ -10,14 +10,15 @@ Map-first environmental intelligence for Ghana. The workspace shows photographic
 - PostGIS monitoring polygons, versioned by Alembic and served through FastAPI.
 - Browser geolocation with accuracy/time/source and authoritative spatial coverage checks.
 - Persisted private observation metadata and capture locations.
+- Optional private image/video intake, with bounded streaming uploads, SHA-256 integrity records, and durable background processing into private review copies.
 - Public GeoJSON containing reference boundaries, coverage, and independently sanitized approved observations.
 
-Monitoring boundaries are demonstration geometries, separate from GSS census district geography. Media upload, authenticated moderator review, AI inference, raster processing, notifications, and production source protection are not implemented. The moderator screens are still disconnected demonstrations.
+Monitoring boundaries are demonstration geometries, separate from GSS census district geography. Uploaded originals, review copies, and thumbnails stay private. Media-backed observations cannot be published through the existing development helper. Authenticated moderator review, content redaction, public media delivery, AI inference, raster processing, notifications, and production source protection remain unimplemented. The moderator screens are still disconnected demonstrations.
 
 ## Structure
 
 - `apps/web`: Next.js App Router, React, Tailwind, Leaflet, typed API adapter, frontend tests.
-- `apps/api`: FastAPI, SQLAlchemy, PostGIS models, Alembic migrations, spatial tests, explicit development publication helper.
+- `apps/api`: FastAPI, SQLAlchemy, PostGIS models, Alembic migrations, private media storage/worker, spatial tests, and an explicit development publication helper for metadata-only observations.
 - `services/geospatial`, `services/ai`: future processing boundaries; see [imagery and AI contracts](docs/imagery-and-ai-contracts.md).
 - `research/xnp`: separate simulation-only node research.
 - `infrastructure`: deployment notes. `docs`: architecture, security, scope, and local operation.
@@ -26,7 +27,7 @@ Monitoring boundaries are demonstration geometries, separate from GSS census dis
 
 This workspace has an isolated PostgreSQL 18/PostGIS instance at `127.0.0.1:55432`, with `xerxes` and `xerxes_test` databases. Data is under `%LOCALAPPDATA%/Xersxes/postgresql18/data`. Local connection credentials are in ignored `.env`; they are not committed. The existing system PostgreSQL service is separate.
 
-For a fresh machine, install PostgreSQL 16+ and PostGIS 3.4+, create application and `*_test` databases, and configure `DATABASE_URL` and `TEST_DATABASE_URL` using `.env.example`. Migrations require permission to install PostGIS (or an administrator can preinstall it). Use Python 3.12+ and Node 22.
+For a fresh machine, install PostgreSQL 16+ and PostGIS 3.4+, create application and `*_test` databases, and configure `DATABASE_URL` and `TEST_DATABASE_URL` using `.env.example`. Migrations require permission to install PostGIS (or an administrator can preinstall it). Use Python 3.12+ and Node 22. Video processing also requires FFmpeg and ffprobe on `PATH`, or explicit `FFMPEG_PATH` and `FFPROBE_PATH` settings in the root `.env`.
 
 Windows, from the repository root:
 
@@ -39,7 +40,13 @@ apps/api/.venv/Scripts/python.exe scripts/run_api.py seed
 apps/api/.venv/Scripts/python.exe scripts/run_api.py serve
 ```
 
-The database starter is specific to the isolated instance prepared for this workspace; use your PostgreSQL service manager on other machines. In another terminal:
+The database starter is specific to the isolated instance prepared for this workspace; use your PostgreSQL service manager on other machines. Keep the media worker running in a second terminal:
+
+```powershell
+apps/api/.venv/Scripts/python.exe scripts/run_api.py worker
+```
+
+In another terminal, start the web application:
 
 ```powershell
 npm.cmd --prefix apps/web ci
@@ -49,6 +56,8 @@ npm.cmd --prefix apps/web run dev
 Open [the satellite workspace](http://localhost:3000/map) or [contribute](http://localhost:3000/report). API liveness is [localhost:8000/health](http://localhost:8000/health); database readiness is [localhost:8000/ready](http://localhost:8000/ready). The web server proxies supported `/api/v1` paths to `API_INTERNAL_URL`, defaulting to `http://127.0.0.1:8000`. Satellite fallback needs no key. To enable Google Hybrid, set a restricted `GOOGLE_MAPS_BROWSER_KEY` in ignored `apps/web/.env.local` and restart Next.js; no rebuild is required. `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is also accepted.
 
 See [map sources and district import](docs/map-sources.md) for the GSS import command, dataset vintage, and Google setup. In the map's Layers panel, toggle **Town and road labels** or **GSS district boundaries** independently.
+
+See [private media intake](docs/media-intake.md) for supported formats, limits, capability-scoped uploads, processing states, cleanup, and privacy limitations. Native development stores private files in ignored `.local/evidence`; a production S3 adapter is not implemented, and this filesystem provider refuses production use.
 
 On Linux/macOS use `apps/api/.venv/bin/python` and `npm` instead.
 
@@ -67,6 +76,6 @@ The spatial suite actually uses PostGIS and requires a separate database whose n
 
 ## Docker later
 
-`docker compose up --build` is prepared for a development PostGIS database, a one-shot migration/seed job, API readiness, and the web application. Its database port is `55433` on the host to avoid the native databases. Stop native API/web processes before using their same ports. Docker execution was explicitly deferred by the user; this stack has not been run locally.
+`docker compose up --build` is prepared for a development PostGIS database, a one-shot migration/seed job, API readiness, a media worker sharing a private evidence volume with the API, and the web application. The API image includes FFmpeg. Its database port is `55433` on the host to avoid the native databases. Stop native API/web processes before using their same ports. Docker execution was explicitly deferred by the user; this stack has not been run locally.
 
 See [the implementation guide](docs/geospatial-foundation.md), [architecture](docs/architecture.md), [security](docs/security.md), and [contributing](CONTRIBUTING.md). Work remains on `feature/*`; do not merge directly to `main`.

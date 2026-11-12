@@ -62,6 +62,7 @@ export interface MapFeatureCollection {
   truncated: boolean;
 }
 export interface ObservationInput {
+  submissionId?: string;
   title?: string;
   description: string;
   observedAt: string;
@@ -70,12 +71,35 @@ export interface ObservationInput {
   mediaType: "none";
   anonymous: boolean;
   consent: true;
+  media?: { uploadId: string; uploadToken: string };
+}
+export type MediaProcessingStatus =
+  | "awaiting_upload"
+  | "uploading"
+  | "quarantined"
+  | "processing"
+  | "review_ready"
+  | "failed"
+  | "expired";
+export interface UploadIntent {
+  id: string;
+  uploadToken: string;
+  uploadUrl: string;
+  expiresAt: string;
+  maxBytes: number;
+}
+export interface UploadStatus {
+  id: string;
+  processingStatus: MediaProcessingStatus;
+  mediaKind: "image" | "video";
+  errorCode?: string | null;
 }
 export interface SubmissionReceipt {
   id: string;
   status: "pending";
   submittedAt: string;
   coverageState: string;
+  media?: UploadStatus | null;
 }
 export interface PublicObservation {
   id: string;
