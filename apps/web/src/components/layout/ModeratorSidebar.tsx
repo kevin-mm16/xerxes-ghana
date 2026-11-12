@@ -4,8 +4,9 @@ import { Badge, Icon } from "@/components/ui";
 const links = [
   { label: "Review queue", href: "#review-queue", icon: "list" },
   { label: "Review workspace", href: "#review-workspace", icon: "file" },
-  { label: "Review checklist", href: "#review-checklist", icon: "check" },
-  { label: "Session activity", href: "#session-activity", icon: "shield" },
+  { label: "Reviewed location", href: "#reviewed-location", icon: "map-pin" },
+  { label: "Public draft", href: "#publication-draft", icon: "check" },
+  { label: "Review activity", href: "#session-activity", icon: "shield" },
 ];
 
 export function ModeratorSidebar() {
@@ -34,7 +35,7 @@ export function ModeratorSidebar() {
           </span>
         </AppLink>
         <div className="lg:mt-5">
-          <Badge tone="amber">DEMO</Badge>
+          <Badge tone="neutral">Private workspace</Badge>
         </div>
         <nav
           aria-label="Operations"
@@ -53,9 +54,9 @@ export function ModeratorSidebar() {
         </nav>
         <div className="mt-auto hidden pt-10 lg:block">
           <p className="border-t border-white/10 pt-5 text-[10px] leading-5 text-[#a6b1a8]">
-            Synthetic records only.
+            Authorized reviewer access.
             <br />
-            Live moderation is not connected.
+            Private evidence stays protected until deliberate publication.
           </p>
           <AppLink
             href="/map"

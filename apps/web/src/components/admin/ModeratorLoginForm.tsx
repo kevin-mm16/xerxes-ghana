@@ -1,9 +1,41 @@
+"use client";
+
 import AppLink from "next/link";
-import { Badge, Icon, LinkButton } from "@/components/ui";
+import { useRouter } from "next/navigation";
+import { useRef, useState, type FormEvent } from "react";
+import { Alert, Badge, Button, Field, Icon, Input } from "@/components/ui";
+import { loginReviewer } from "@/services/moderation";
 
 export function ModeratorLoginForm() {
+  const router = useRouter();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const feedback = useRef<HTMLDivElement>(null);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await loginReviewer(username, password);
+      setPassword("");
+      router.replace("/moderator/dashboard");
+    } catch (reason) {
+      setPassword("");
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Sign-in could not be completed.",
+      );
+      requestAnimationFrame(() => feedback.current?.focus());
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
-    <main className="min-h-screen bg-[#172021] px-5 py-7 font-sans text-[#f5f3ed] sm:px-8 sm:py-10">
+    <main className="min-h-screen bg-[#172021] px-5 py-7 text-[#f5f3ed] sm:px-8 sm:py-10">
       <header className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-5">
         <AppLink
           href="/"
@@ -16,7 +48,7 @@ export function ModeratorLoginForm() {
         </AppLink>
         <AppLink
           href="/map"
-          className="flex min-h-10 items-center gap-2 text-xs text-[#c4cdc5] hover:text-white"
+          className="flex min-h-10 items-center gap-2 text-xs text-[#c4cdc5]"
         >
           <Icon name="arrow-left" className="h-4 w-4" />
           Public workspace
@@ -31,8 +63,8 @@ export function ModeratorLoginForm() {
             A workspace for evidence review.
           </h1>
           <p className="mt-6 max-w-md text-sm leading-7 text-[#aebbb0]">
-            Inspect a synthetic observation queue and try the review workflow.
-            This preview is separate from live evidence intake.
+            Authorized reviewers can inspect private submissions, establish
+            reviewed activity locations and prepare safe public records.
           </p>
           <div className="mt-8 flex items-start gap-3 border-t border-white/10 pt-6">
             <Icon
@@ -40,48 +72,67 @@ export function ModeratorLoginForm() {
               className="mt-0.5 h-4 w-4 shrink-0 text-[#a6b1a8]"
             />
             <p className="max-w-sm text-xs leading-6 text-[#aebbb0]">
-              Production review requires authenticated, authorized access. That
-              connection is not available in this preview.
+              Private evidence requires deliberate source protection. Metadata
+              stripping does not remove identifying faces, voices or landmarks.
             </p>
           </div>
         </section>
         <section
-          aria-labelledby="demo-access-heading"
-          className="rounded-[6px] border border-[#d9ddd6] bg-[#f5f3ed] p-6 text-[#172021] sm:p-8"
+          aria-labelledby="reviewer-sign-in"
+          className="rounded-[6px] border border-line bg-paper p-6 text-ink sm:p-8"
         >
-          <Badge tone="amber">DEMO ACCESS</Badge>
+          <Badge tone="neutral">Restricted access</Badge>
           <h2
-            id="demo-access-heading"
+            id="reviewer-sign-in"
             className="mt-5 text-xl font-semibold tracking-tight"
           >
-            Open the review preview
+            Reviewer sign-in
           </h2>
-          <p className="mt-3 text-sm leading-6 text-[#65706a]">
-            No sign-in is performed. No credentials are requested.
+          <p className="mt-3 text-sm leading-6 text-muted">
+            Use your assigned reviewer account. Sessions expire after eight
+            hours.
           </p>
-          <dl className="mt-6 divide-y divide-[#d9ddd6] border-y border-[#d9ddd6] text-xs">
-            <div className="flex justify-between gap-4 py-3">
-              <dt className="text-[#65706a]">Records</dt>
-              <dd className="text-right font-medium">Synthetic samples</dd>
-            </div>
-            <div className="flex justify-between gap-4 py-3">
-              <dt className="text-[#65706a]">Private media</dt>
-              <dd className="text-right font-medium">Not connected</dd>
-            </div>
-            <div className="flex justify-between gap-4 py-3">
-              <dt className="text-[#65706a]">Decisions</dt>
-              <dd className="text-right font-medium">Local session only</dd>
-            </div>
-          </dl>
-          <LinkButton
-            href="/moderator/dashboard"
-            className="mt-7 w-full justify-between"
-          >
-            Open demo console <Icon name="arrow-right" className="h-4 w-4" />
-          </LinkButton>
-          <p className="mt-4 text-[11px] leading-5 text-[#65706a]">
-            Demo changes reset on reload. No live submission can be approved or
-            published here.
+          <form onSubmit={submit} className="mt-6 space-y-5">
+            <Field label="Username" required>
+              <Input
+                autoComplete="username"
+                value={username}
+                required
+                maxLength={120}
+                disabled={busy}
+                onChange={(event) => setUsername(event.target.value)}
+              />
+            </Field>
+            <Field label="Password" required>
+              <Input
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                required
+                maxLength={1024}
+                disabled={busy}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </Field>
+            {error && (
+              <div ref={feedback} tabIndex={-1}>
+                <Alert tone="red" title="Sign-in failed">
+                  {error}
+                </Alert>
+              </div>
+            )}
+            <Button
+              type="submit"
+              disabled={busy}
+              className="w-full justify-between"
+            >
+              {busy ? "Signing in…" : "Sign in"}
+              <Icon name="arrow-right" className="h-4 w-4" />
+            </Button>
+          </form>
+          <p className="mt-5 text-[11px] leading-5 text-muted">
+            Public contribution does not require an account. Reviewer
+            credentials must never be included in submitted evidence.
           </p>
         </section>
       </div>
